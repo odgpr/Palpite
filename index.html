@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#00309c">
+<title>Palpite</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: early-2000s desktop. Dark blue bands top and bottom, glossy blue backdrop, the game lives inside one window with a blue title bar. Single deliberate light look. */
+:root{
+  color-scheme:light;
+  --band:#00309c; --band-dark:#0a1e6e; --sky1:#5a7edc; --sky2:#7a9ae6; --rule:#f39c3c;
+  --chrome1:#0a5ad8; --chrome2:#3a8af5; --chrome3:#0346c4;
+  --face:#ece9d8; --face-dark:#d4d0c8; --edge:#7f9db9; --ink:#1a1a1a; --muted:#555;
+  --btn-border:#003c74; --link:#0b4fc4;
+  --hit:#2a6fe0; --near:#f08a24; --miss:#8a8d96; --key:#e9e7df;
+  --hit1:#3c8cf0; --hit2:#0a4fc8; --near1:#ffb347; --near2:#e8740c; --miss1:#a7a9b0; --miss2:#7d808a;
+  --ui:Tahoma, Verdana, "Segoe UI", Geneva, sans-serif;
+  --title:"Trebuchet MS", "Lucida Grande", Tahoma, sans-serif;
+}
+*{box-sizing:border-box} [hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;color:var(--ink);font:13px/1.4 var(--ui);overflow:hidden;-webkit-tap-highlight-color:transparent;
+  background:linear-gradient(var(--band) 0 22px, var(--rule) 22px 23px, transparent 23px),
+    linear-gradient(0deg, var(--band-dark) 0 40px, var(--rule) 40px 41px, transparent 41px),
+    radial-gradient(ellipse at 18% 30%, #a9c1f2 0, transparent 45%),
+    linear-gradient(160deg, var(--sky2), var(--sky1) 60%, #4a6ccc);
+  background-color:var(--sky1)}
+.app{height:100%;display:flex;flex-direction:column;max-width:520px;margin:0 auto;
+  padding-left:max(10px, env(safe-area-inset-left,0px));padding-right:max(10px, env(safe-area-inset-right,0px));padding-block:30px 46px}
+.window{flex:1;min-height:0;display:flex;flex-direction:column;border-radius:9px 9px 0 0;
+  background:var(--chrome3);padding:0 3px 3px;box-shadow:0 6px 24px rgba(0,10,60,.45)}
+.titlebar{display:flex;align-items:center;gap:6px;height:32px;padding:0 4px 0 8px;border-radius:8px 8px 0 0;
+  background:linear-gradient(var(--chrome2), var(--chrome1) 18%, var(--chrome3) 85%, #0a3aa8);
+  color:#fff;text-shadow:1px 1px 0 #0f1f6b}
+.titlebar .ico{width:18px;height:18px;border-radius:4px;display:grid;place-items:center;font:bold 11px var(--title);
+  background:linear-gradient(135deg,var(--near1),var(--near2));border:1px solid #fff8;text-shadow:none;color:#fff}
+h1{margin:0;font:bold 15px var(--title);letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+h1 small{font-weight:normal;opacity:.85}
+.tbtn{width:26px;height:24px;border-radius:4px;border:1px solid #fff;display:grid;place-items:center;cursor:pointer;color:#fff;
+  font:bold 14px var(--ui);padding:0;background:linear-gradient(#5a9bff,#2563e0 55%,#1b4fc8);box-shadow:inset 0 0 0 1px #2c66d6}
+.tbtn svg{width:14px;height:14px}
+.tbtn.red{background:linear-gradient(#f0907a,#d9512c 55%,#c23a14)}
+.tbtn:focus-visible,.key:focus-visible,.btn:focus-visible{outline:1px dotted #000;outline-offset:-4px}
+.grow{flex:1}
+.modebtn{display:flex;align-items:center;gap:6px;height:24px;padding:0 8px;border-radius:3px;border:1px solid #ffffff90;cursor:pointer;
+  background:linear-gradient(#ffffff40,#ffffff10);color:#fff;font:bold 13px var(--ui);text-shadow:1px 1px 0 #0f1f6b;white-space:nowrap}
+.modebtn svg{width:9px;height:6px;transition:transform .15s}
+.modebtn[aria-expanded="true"] svg{transform:rotate(180deg)}
+.modebtn:focus-visible{outline:1px dotted #fff;outline-offset:2px}
+.window{position:relative}
+.menu{position:absolute;top:34px;left:90px;z-index:15;min-width:210px;background:#fff;border:1px solid #808080;box-shadow:3px 3px 6px #0006;padding:2px;display:flex;flex-direction:column}
+.mitem{display:flex;flex-direction:column;align-items:flex-start;gap:1px;border:0;background:none;text-align:left;padding:6px 10px 6px 26px;cursor:pointer;font:13px var(--ui);color:var(--ink);position:relative}
+.mitem span{font-size:11px;color:var(--muted)}
+.mitem:hover,.mitem:focus-visible{background:#316ac5;color:#fff;outline:0}
+.mitem:hover span,.mitem:focus-visible span{color:#dfe8ff}
+.mitem[aria-checked="true"]::before{content:"";position:absolute;left:10px;top:12px;width:7px;height:7px;border-radius:50%;background:currentColor}
+.client{flex:1;min-height:0;display:flex;flex-direction:column;background:var(--face);padding:8px}
+main{flex:1;min-height:0;width:100%;position:relative}
+.boards{--ts:54px;--gap:5px;position:absolute;inset:4px 0;overflow:hidden;display:grid;grid-template-columns:auto;place-content:center;gap:12px}
+
+.board{display:grid;gap:var(--gap);transition:opacity .3s}
+.board.solved{opacity:.6}
+.row{display:grid;gap:var(--gap)}
+.tile{position:relative;display:grid;place-items:center;background:#fff;
+  border:2px solid;border-color:#7a7a7a #fff #fff #7a7a7a;box-shadow:inset 1px 1px 0 #404040;
+  width:var(--ts);height:var(--ts);font:bold calc(var(--ts)*.55) var(--title);text-transform:uppercase;user-select:none;color:var(--ink)}
+.tile.filled{animation:pop .12s}
+.row.active .tile{cursor:pointer}
+.row.active .tile.cursor{background:#fffbe0;outline:1px dotted #000;outline-offset:-5px}
+.tile.hit,.tile.near,.tile.miss{color:#fff;text-shadow:1px 1px 0 #0005;border:1px solid;box-shadow:inset 0 1px 0 #fff8;border-radius:calc(var(--ts)*.09)}
+.tile.hit{background:linear-gradient(var(--hit1),var(--hit2));border-color:#06358a}
+.tile.near{background:linear-gradient(var(--near1),var(--near2));border-color:#a8500a}
+.tile.miss{background:linear-gradient(var(--miss1),var(--miss2));border-color:#5d606a}
+.tile.off{opacity:.3}
+.tile.flip{animation:flip .5s ease both}
+.row.shake{animation:shake .4s}
+.row.win .tile{animation:hop .5s ease both}
+@keyframes pop{50%{transform:scale(1.06)}}
+@keyframes flip{0%{transform:rotateX(0)}50%{transform:rotateX(90deg)}100%{transform:rotateX(0)}}
+@keyframes shake{20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+@keyframes hop{40%{transform:translateY(-12px)}}
+.keyboard{display:flex;flex-direction:column;gap:5px;padding-top:8px;user-select:none}
+.krow{display:flex;gap:4px;justify-content:center}
+.key{flex:1 1 0;min-width:0;height:48px;border:1px solid var(--btn-border);border-radius:3px;
+  background:linear-gradient(#fff,#ecebe6 60%,#d6d0c5);box-shadow:inset -1px -1px 0 #c0b9ad, inset 1px 1px 0 #fff;
+  color:var(--ink);font:bold 1rem var(--ui);text-transform:uppercase;cursor:pointer;touch-action:manipulation;padding:0}
+.key:hover{box-shadow:inset 0 0 0 2px #f8b33b}
+.key:active{background:linear-gradient(#e3e1d9,#f0efea)}
+.key.wide{flex:1.6 1 0;font-size:.78rem;text-transform:none}
+.key.hit,.key.near,.key.miss{color:#fff;text-shadow:1px 1px 0 #0005;box-shadow:inset 0 1px 0 #fff8}
+.key.hit{background:linear-gradient(var(--hit1),var(--hit2));border-color:#06358a}
+.key.near{background:linear-gradient(var(--near1),var(--near2));border-color:#a8500a}
+.key.miss{background:linear-gradient(var(--miss1),var(--miss2));border-color:#5d606a}
+.spacer{flex:.5 1 0}
+.key.split{color:#fff;text-shadow:1px 1px 1px #000a}
+.statusbar{display:flex;gap:4px;background:var(--face);border-top:1px solid #fff;padding:3px 4px}
+.statusbar span{flex:1;border:1px solid;border-color:#a0a0a0 #fff #fff #a0a0a0;padding:1px 6px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.statusbar span:last-child{flex:0 0 auto}
+.taskbar{position:fixed;left:0;right:0;bottom:0;height:calc(40px + env(safe-area-inset-bottom,0px));padding-bottom:env(safe-area-inset-bottom,0px);
+  padding-left:max(10px, env(safe-area-inset-left,0px));padding-right:max(10px, env(safe-area-inset-right,0px));
+  display:flex;align-items:center;justify-content:space-between;color:#fff;font-size:12px;pointer-events:none}
+.taskbar b{font:italic bold 18px var(--title);text-shadow:1px 1px 2px #0008}
+.toast{position:fixed;left:50%;top:calc(4px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:30;pointer-events:none;opacity:0;transition:opacity .2s;
+  background:#ffffe1;color:#000;border:1px solid #000;border-radius:8px;padding:8px 12px;box-shadow:2px 2px 4px #0006;max-width:90vw;text-align:center;font-size:13px}
+.toast b{display:block;font-size:12px;margin-bottom:2px}
+.toast.show{opacity:1}
+.modal{position:fixed;inset:0;background:rgba(0,20,80,.35);display:grid;place-items:center;z-index:20;
+  padding:max(16px, env(safe-area-inset-top,0px)) max(16px, env(safe-area-inset-right,0px)) max(16px, env(safe-area-inset-bottom,0px)) max(16px, env(safe-area-inset-left,0px))}
+.card{width:min(400px,100%);max-height:100%;display:flex;flex-direction:column;border-radius:8px 8px 0 0;background:var(--chrome3);padding:0 3px 3px;box-shadow:4px 6px 18px rgba(0,0,0,.5)}
+.card .titlebar h2{margin:0;font:bold 14px var(--title);flex:1}
+.card .body{background:var(--face);padding:14px;overflow:auto}
+.card p,.card li{line-height:1.5;margin:0 0 9px}
+.ex{display:flex;gap:4px;margin:6px 0}
+.ex .tile{--ts:38px;font-size:1.2rem}
+.small{font-size:12px;color:var(--muted)}
+fieldset{border:1px solid #d0d0bf;border-radius:4px;margin:0 0 12px;padding:8px 10px}
+legend{color:#0046d5;padding:0 4px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;text-align:center}
+.stats b{display:block;font:bold 1.6rem var(--title);font-variant-numeric:tabular-nums}
+.stats span{font-size:11px;color:var(--muted)}
+.dist{display:flex;flex-direction:column;gap:4px}
+.bar{display:flex;align-items:center;gap:6px;font-weight:bold;font-variant-numeric:tabular-nums}
+.bar i{height:16px;border:1px solid #7f9db9;padding:1px;background:#fff content-box;
+  background-image:repeating-linear-gradient(90deg,#3fc63f 0 8px,transparent 8px 10px);background-clip:content-box}
+.bar em{font-style:normal;font-weight:normal}
+.bar.now i{border-color:#06358a;background:repeating-linear-gradient(90deg,var(--hit1) 0 8px,var(--hit2) 8px 9px, transparent 9px 11px)}
+.answers{display:flex;flex-wrap:wrap;gap:2px 16px}
+.goto{flex-basis:100%;display:flex;align-items:center;justify-content:flex-end;gap:6px;margin-top:4px}
+.goto input{width:70px;padding:4px 6px;border:1px solid var(--edge);font:13px var(--ui);background:#fff;color:#000}
+.goto .btn{min-width:56px}
+.answer{font:bold 1.4rem var(--title);text-transform:uppercase;letter-spacing:.06em;color:var(--hit2)}
+.actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.btn{flex:0 1 auto;min-width:96px;border:1px solid var(--btn-border);border-radius:3px;padding:6px 12px;font:13px var(--ui);cursor:pointer;color:#000;
+  background:linear-gradient(#fff,#ecebe6 60%,#d6d0c5);box-shadow:inset -1px -1px 0 #c0b9ad, inset 1px 1px 0 #fff}
+.btn.primary{box-shadow:inset 0 0 0 2px #98b8ea}
+.next{font-variant-numeric:tabular-nums;flex-basis:100%;margin:4px 0 0;text-align:right}
+body .key{height:42px}
+body .client{padding:4px 6px 6px}
+body .keyboard{gap:4px;padding-top:6px}
+.boot{position:fixed;inset:0;z-index:60;background:#000;cursor:pointer;transition:opacity .5s}
+.boot.out{opacity:0;pointer-events:none}
+.stage{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.s1{gap:min(18vh,120px);background:#000}
+.s2{opacity:0;transition:opacity .35s;gap:10px;
+  background:linear-gradient(var(--band) 0 9%, #8aa4e8 9% calc(9% + 1px), transparent 0),
+    linear-gradient(0deg, #3d2fa8 0, #1a3aa6 9%, var(--rule) 9% calc(9% + 1px), transparent 0),
+    radial-gradient(circle at 6% 13%, #aac0f4 0, transparent 9%), #5b7ddb}
+.boot.two .s2{opacity:1}
+.bootlogo{display:flex;align-items:flex-end;gap:12px;animation:bootin .9s ease both}
+.mark{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:10px}
+.mark i{width:32px;height:32px;display:grid;place-items:center;border-radius:6px;font:bold 18px var(--title);font-style:normal;color:#fff;
+  text-shadow:1px 1px 0 #0006;box-shadow:inset 0 2px 0 #fff6, inset 0 -3px 6px #0003}
+.mark .m1{background:linear-gradient(var(--hit1),var(--hit2))}.mark .m2{background:linear-gradient(var(--near1),var(--near2))}
+.mark .m3{background:linear-gradient(var(--miss1),var(--miss2))}.mark .m4{background:linear-gradient(var(--hit1),var(--hit2))}
+.mark.sm{gap:2px;margin:0}.mark.sm i{width:13px;height:13px;border-radius:3px;font-size:8px}
+.wm{color:#fff;font:bold 50px/1 var(--title);letter-spacing:-.02em;display:flex;flex-direction:column}
+.wm .pre{font:bold 13px var(--ui);letter-spacing:.02em;margin-bottom:2px;color:#e6e6e6}
+.wm sup,.minilogo sup{font:italic bold .42em var(--title);color:#f39c3c;vertical-align:top;margin-left:3px}
+.loader{width:150px;height:18px;border:2px solid #b4b4b4;border-radius:5px;padding:2px;overflow:hidden;background:#000}
+.blocks{display:flex;gap:2px;height:100%;animation:slide 2s linear infinite}
+.blocks span{width:9px;height:100%;border-radius:2px;background:linear-gradient(#bcd2ff,#3a6fe8 45%,#1b44ad)}
+.minilogo{display:flex;align-items:center;gap:8px;color:#fff;font:bold 22px var(--title);text-shadow:1px 1px 2px #0005}
+.s2 p{margin:0;color:#fff;font:13px var(--ui);text-shadow:1px 1px 1px #0005}
+@media (max-width:360px){h1{display:none}}
+.tbtn .x{display:none}.tbtn.muted .x{display:inline}.tbtn.muted .w{display:none}
+.s1{gap:min(10vh,70px)}
+.tap{margin:0;color:#8f8f8f;font:12px var(--ui);animation:blink 1.6s ease-in-out infinite}
+.s2 .tap{color:#dfe8ff}
+@keyframes blink{50%{opacity:.35}}
+@keyframes slide{0%{transform:translateX(-36px)}100%{transform:translateX(150px)}}
+@keyframes bootin{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}
+@media (min-width:900px) and (min-height:600px){
+  .app{max-width:1600px;padding-block:40px 54px;padding-left:max(24px, env(safe-area-inset-left,0px));padding-right:max(24px, env(safe-area-inset-right,0px))}
+  .titlebar{height:38px;padding:0 6px 0 10px}
+  h1{font-size:18px}
+  .titlebar .ico{width:22px;height:22px;font-size:13px}
+  .tbtn{width:32px;height:28px}.tbtn svg{width:16px;height:16px}
+  .modebtn{height:28px;font-size:14px;padding:0 10px}
+  .menu{top:40px;left:110px}
+  .client{padding:10px 16px}
+  .keyboard{width:min(100%,600px);margin:0 auto;gap:6px}
+  .krow{gap:6px}
+  body .key{height:54px;font-size:1.1rem}
+  .statusbar span{font-size:13px}
+}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+@media (max-height:640px){.key{height:42px}.board{gap:4px}.row{gap:4px}}
+</style>
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html,body{margin:0}img{max-width:100%}</style>
+</head>
+<body>
+<div class="boot" id="boot" aria-hidden="true">
+  <div class="stage s1">
+    <div class="bootlogo">
+      <div class="mark"><i class="m1">P</i><i class="m2">A</i><i class="m3">L</i><i class="m4">?</i></div>
+      <div class="wm"><small class="pre">jogos de palavras</small>Palpite<sup>retrô</sup></div>
+    </div>
+    <div class="loader"><div class="blocks"><span></span><span></span><span></span></div></div>
+  </div>
+  <div class="stage s2">
+    <div class="minilogo"><div class="mark sm"><i class="m1">P</i><i class="m2">A</i><i class="m3">L</i><i class="m4">?</i></div><span>Palpite<sup>retrô</sup></span></div>
+    <p>Carregando suas palavras...</p>
+  </div>
+</div>
+<div class="app">
+  <div class="window">
+    <div class="titlebar">
+      <span class="ico" aria-hidden="true">P</span>
+      <h1>Palpite</h1>
+      <button class="modebtn" id="modeBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="modeMenu"><span id="modeName">Clássico</span><svg viewBox="0 0 10 6" aria-hidden="true"><path d="M0 0h10L5 6z" fill="currentColor"/></svg></button>
+      <span class="grow"></span>
+      <button class="tbtn" id="bHelp" aria-label="Como jogar">?</button>
+      <button class="tbtn" id="bNew" aria-label="Próxima partida"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg></button>
+      <button class="tbtn" id="bSound" aria-label="Desligar som"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 9h4l5-4v14l-5-4H4z"/><path class="w" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path class="x" d="M16 9l6 6M22 9l-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
+      <button class="tbtn" id="bStats" aria-label="Estatísticas"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="12" width="4" height="9"/><rect x="10" y="6" width="4" height="15"/><rect x="17" y="3" width="4" height="18"/></svg></button>
+    </div>
+    <div class="menu" id="modeMenu" role="menu" aria-label="Modo de jogo" hidden></div>
+    <div class="client">
+      <main><div class="boards" id="boards"></div></main>
+      <div class="keyboard" id="kb"></div>
+    </div>
+    <div class="statusbar"><span id="mode">Pronto</span><span id="left"></span></div>
+  </div>
+</div>
+<div class="taskbar" aria-hidden="true"><b>palpite</b><span id="clock"></span></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<div class="modal" id="mHelp" hidden><div class="card" role="dialog" aria-labelledby="hHelp">
+  <div class="titlebar"><span class="ico" aria-hidden="true">?</span><h2 id="hHelp">Como jogar</h2><button class="tbtn red" data-close aria-label="Fechar">✕</button></div>
+  <div class="body">
+  <p>Descubra a palavra secreta de cinco letras. Cada palpite precisa ser uma palavra que existe em português.</p>
+  <ul><li><b>Clássico</b>: uma palavra, 6 tentativas.</li><li><b>Dupla</b>: duas palavras ao mesmo tempo, 7 tentativas.</li><li><b>Quádrupla</b>: quatro palavras ao mesmo tempo, 9 tentativas.</li></ul>
+  <p>Nos modos com várias palavras, cada palpite vale para todos os quadros, e as teclas se dividem para mostrar a cor de cada quadro.</p>
+  <p>Acentos e cedilha entram sozinhos: digite <b>acao</b> e vale <b>ação</b>.</p>
+  <div class="ex"><div class="tile hit">c</div><div class="tile">a</div><div class="tile">n</div><div class="tile">o</div><div class="tile">a</div></div>
+  <p>O botão <b>azul</b> mostra que o <b>C</b> está na palavra e na posição certa.</p>
+  <div class="ex"><div class="tile">p</div><div class="tile near">e</div><div class="tile">d</div><div class="tile">r</div><div class="tile">a</div></div>
+  <p>O botão <b>laranja</b> mostra que o <b>E</b> está na palavra, mas em outra posição.</p>
+  <div class="ex"><div class="tile">f</div><div class="tile">o</div><div class="tile">l</div><div class="tile miss">h</div><div class="tile">a</div></div>
+  <p>O botão <b>cinza</b> mostra que o <b>H</b> não aparece na palavra.</p>
+  <p class="small">Toque numa casa da linha atual para escrever nela. Jogue quantas vezes quiser: no fim aparece <b>Próxima partida</b> (ou aperte Enter), e o botão ↻ pula para a próxima. As partidas seguem uma ordem fixa, igual para todo mundo. Para jogar junto com alguém, abra as estatísticas e use <b>Ir para a partida</b> com o mesmo número.</p>
+  <div class="actions"><button class="btn primary" data-close>OK</button></div>
+  </div>
+</div></div>
+
+<div class="modal" id="mStats" hidden><div class="card" role="dialog" aria-labelledby="hStats">
+  <div class="titlebar"><span class="ico" aria-hidden="true">P</span><h2 id="hStats">Seu desempenho</h2><button class="tbtn red" data-close aria-label="Fechar">✕</button></div>
+  <div class="body">
+  <div id="result"></div>
+  <fieldset><legend>Estatísticas</legend><div class="stats" id="stats"></div></fieldset>
+  <fieldset><legend>Acertos por tentativa</legend><div class="dist" id="dist"></div></fieldset>
+  <div class="actions" id="actions"></div>
+  </div>
+</div></div>
+<script>
+const ANSWERS=["mundo", "tempo", "coisa", "parte", "forma", "maior", "outro", "falar", "ficar", "pouco", "noite", "grupo", "dizer", "lugar", "saber", "volta", "conta", "gente", "final", "quase", "filho", "vídeo", "poder", "tarde", "local", "morte", "filme", "geral", "certo", "terra", "falta", "favor", "série", "causa", "feira", "ajuda", "cerca", "corpo", "livro", "amigo", "claro", "norte", "ponto", "feliz", "gosto", "força", "manhã", "forte", "fácil", "legal", "longo", "campo", "filha", "ouvir", "perto", "único", "apoio", "ideia", "junto", "levar", "porto", "livre", "sério", "carro", "festa", "nível", "total", "vista", "irmão", "plano", "viver", "linha", "tomar", "idade", "mudar", "baixo", "jeito", "valor", "parar", "tirar", "comum", "texto", "época", "criar", "longe", "prova", "acima", "atual", "civil", "olhar", "pedir", "super", "pegar", "chefe", "comer", "busca", "passo", "razão", "santa", "sexta", "pagar", "união", "banco", "porta", "praia", "autor", "clube", "curso", "fundo", "rádio", "verde", "natal", "costa", "crime", "fonte", "banda", "jogar", "velho", "sorte", "globo", "líder", "massa", "monte", "resto", "certa", "linda", "mente", "média", "preço", "corte", "marca", "verão", "menor", "visão", "abrir", "capaz", "carta", "matar", "sonho", "achar", "culpa", "risco", "santo", "acaso", "andar", "crise", "sinal", "rosto", "saída", "caixa", "igual", "lindo", "praça", "casal", "hotel", "longa", "preto", "troca", "breve", "lidar", "reino", "chave", "redor", "roupa", "banho", "graça", "teste", "ótimo", "cheio", "obter", "serra", "cargo", "dança", "opção", "torno", "beber", "clima", "perda", "termo", "chuva", "pobre", "calma", "haver", "queda", "setor", "velha", "louco", "oeste", "pedra", "tocar", "carne", "clara", "leite", "golpe", "ligar", "lutar", "moral", "venda", "custo", "faixa", "palco", "prazo", "bater", "humor", "museu", "calor", "curta", "ponte", "enfim", "pista", "raiva", "sítio", "folha", "vento", "casar", "canto", "ferro", "frase", "grave", "honra", "bolsa", "braço", "curto", "dupla", "piada", "rapaz", "renda", "vinho", "justo", "motor", "letra", "nação", "subir", "vinte", "avião", "bloco", "carga", "disco", "etapa", "peixe", "ponta", "votar", "áudio", "anual", "aviso", "barra", "bomba", "conto", "lança", "droga", "fugir", "navio", "solar", "turma", "virar", "beijo", "atriz", "regra", "samba", "ciclo", "herói", "peito", "drama", "moeda", "salão", "primo", "turno", "vazio", "extra", "falha", "briga", "morar", "areia", "arroz", "coroa", "fluxo", "lenda", "metal", "nariz", "prata", "rocha", "dever", "exame", "falso", "perna", "ritmo", "temer", "arena", "ideal", "árabe", "ampla", "torre", "noção", "senso", "cópia", "lavar", "pleno", "salto", "elite", "firme", "fraco", "gerar", "greve", "lição", "prato", "vidro", "bordo", "mexer", "morro", "placa", "baile", "bolso", "nobre", "roubo", "barco", "poeta", "sócio", "cobre", "diabo", "parto", "senha", "ficha", "magia", "aluno", "dieta", "poema", "suave", "atuar", "bando", "fator", "limpo", "negar", "amplo", "botão", "móvel", "noiva", "vigor", "fruto", "ácido", "multa", "milho", "pesca", "sabor", "abuso", "exato", "expor", "fumar", "tribo", "culto", "juízo", "pizza", "gordo", "grito", "lucro", "notar", "colar", "flash", "missa", "viola", "dobro", "grego", "norma", "corda", "lesão", "tinta", "piano", "barba", "burro", "cinza", "dente", "deusa", "dólar", "molho", "ombro", "pasta", "usina", "cruel", "praga", "trama", "vital", "circo", "judeu", "pausa", "êxito", "bacia", "censo", "citar", "porco", "puxar", "bravo", "bruto", "chapa", "curva", "pátio", "rival", "vazia", "creme", "digno", "marte", "rever", "sigla", "gesto", "lazer", "tigre", "ícone", "apelo", "coral", "lagoa", "limão", "pular", "tropa", "fruta", "mover", "pacto", "curar", "folga", "palma", "vasta", "grama", "manga", "túnel", "couro", "gripe", "fusão", "vapor", "credo", "grade", "saldo", "turco", "bicho", "caçar", "delta", "duque", "horta", "vilão", "viúva", "vício", "calmo", "sexto", "testa", "trigo", "gênio", "medir", "radar", "sobra", "duelo", "golfo", "ninho", "ídolo", "balão", "dúzia", "gasto", "impor", "índio", "flora", "forno", "troco", "choro", "fatal", "lorde", "tampa", "touro", "treze", "altar", "farol", "fúria", "ruído", "botar", "grato", "ronda", "sábio", "balde", "barão", "berço", "bruxa", "fibra", "firma", "monge", "vasto", "susto", "blusa", "borda", "misto", "rolar", "verso", "águia", "forró", "pilar", "prado", "pulso", "asilo", "cacau", "cesta", "palha", "pesar", "verbo", "vocal", "latim", "pilha", "surto", "vácuo", "bolha", "podre", "punho", "banca", "ceder", "cinto", "farsa", "nadar", "zumbi", "afeto", "casca", "nisto", "lente", "rubro", "barro", "fêmea", "peste", "pódio", "astro", "cauda", "ferir", "gerir", "rodar", "servo", "anexo", "brisa", "leito", "mania", "errar", "rigor", "sabão", "signo", "traje", "magro", "malha", "sogra", "tocha", "garra", "idoso", "jejum", "pisar", "sonda", "cabra", "sutil", "tenso", "terno", "etnia", "mosca", "panda", "sorri", "sumir", "traço", "usual", "mútuo", "optar", "renal", "letal", "turbo", "fatia", "girar", "libra", "mirim", "temor", "arame", "prosa", "tosse", "ciúme", "frete", "vigia", "bazar", "imune", "lunar", "rifle", "ruiva", "sacar", "supor", "clone", "fixar", "sopro", "tenda", "épico", "guiar", "surdo", "tango", "ótica", "adiar", "caldo", "cofre", "combo", "porão", "pudim", "vinil", "rumor", "sogro", "casco", "farra", "fuzil", "litro", "loiro", "quilo", "ápice", "ético", "êxodo", "dobra", "fluir", "furar", "pardo", "rapto", "barca", "corvo", "cueca", "feroz", "motim", "polar", "rampa", "tecla", "apito", "fardo", "leque", "macio", "pombo", "tábua", "tédio", "aroma", "esqui", "gaita", "pinho", "canoa", "hobby", "laudo", "salsa", "zinco", "cupom", "garfo", "nudez", "torto", "úmido", "apego", "fosso", "ganso", "lenço", "seita", "fenda", "hábil", "xeque", "gesso", "lábio", "pente", "bingo", "clero", "fungo", "galho", "miúdo", "oliva", "tutor", "tórax", "ímpar", "açude", "verme", "vetor", "armar", "cifra", "nervo", "ruína", "tufão", "polvo", "safra", "gruta", "veloz", "bossa", "cosmo", "melão", "pingo", "prego", "ruivo", "nicho", "bambu", "brasa", "cravo", "dueto", "régua", "bioma", "cloro", "salmo", "pavor", "fênix", "zebra", "capim", "couve", "trevo", "ânsia", "gíria", "vagão", "valsa", "aveia", "buquê", "busto", "haste", "nasal", "feixe", "milha", "brejo", "limbo", "pedal", "átomo", "arara", "cinta", "órfão", "cesto", "cisne", "grilo", "janta", "capuz", "licor", "névoa", "cerne", "lebre", "linho", "cedro", "fútil", "múmia", "pasto", "prece", "telha", "varal", "ameno", "dogma", "ducha", "lírio", "pudor", "azedo", "urubu", "poção", "praxe", "pólen", "sótão", "vespa", "ileso", "relva", "tiara", "lapso", "âmbar", "labor", "menta", "átrio", "horda", "lítio", "polpa", "calda", "lombo", "rombo", "ômega", "facão", "ronco", "pagão", "touca", "sarau", "dardo", "jarra", "harpa", "pulga", "funil", "visor", "pluma", "vulto", "adaga", "hiena", "aorta", "fedor", "vogal", "cacto", "magma"];
+const PLAIN="abade abafa abafe abafo abala abale abalo abana abane abano abata abate abati abeto abibe abies abita aboca aboio abola abole aboli abona abono abram abras abrem abres abria abril abrir abriu abuda abusa abuse abuso acaba acabe acabo acada acade acaia acaju acari acasa acaso acata acate acato aceda acede acedi acedo acena acene aceno acero acesa aceso aceto acham achar achas achei achem aches achim achou acima acnes acode acral acres acuar acuda acudi acuna acura acusa acuse acuso adaga adail adama adamo adana adega adeje adela adele adema adere aderi adeus adiam adiar adias adida adido adiei adiem adiou adira adobe adoce adora adore adoro adota adote adoto aduba adubo adufe adula advir afaga afago afere afeta afete afeto afiam afiar afife afina afine afino afins afiou afixa afixo afobe afoga afogo afora afros aftas agave agera agiam agido agita agite agito agnes agnos agora agota agros aguar aguda agudo ainda aines ainsa aipim aires ajuda ajude ajudo alaba alada alado alaga alana alano albis alces alega alego aleia alelo alena alepo alese aleta alfas algar algas alger algol algos algoz algum alhos aliam aliar aliem alija aliou alisa alise aliso almas aloca aloja aloje alona alpes altar altas alter altos alude aluga alugo aluma aluna aluno alvar alvas alvor alvos amada amado amais amamo amana amane amano amara amare amaro amata amato amava ambas ambos ambra ambre ameba ameei ameis amemo amena ameno amida amido amiga amigo amila amina amine amino amola amole amora amore amori amoro ampla amplo amuar amuro anaia anais anana anata ancas anche ancho andai andam andar andas andei andem andes andor andou anela anelo anete aneto anexa anexe anexo angel anglo angor angra angus anida anima anime anina anita anjas anjos anona anota anote anoto anova ansar antal antar antas antes antos antro anual anuiu anula anule anulo anzol aonde aorta apaga apago apana apara apare aparo apear apega apego apela apele apelo apena apeou apita apite apito apoia apoie apoio apolo apraz apres aptas aptos apura apure apuro araci arada arade arado arame arara arari aratu arava arcam arcar arcas arcos arcou ardem arder ardeu ardia ardil ardis ardor areal areca areia areja arena areno arfar argel argon argos argue arias arica aries ariri armam armar armas armei armem armes armou arnaz aroma arque arqui arras arria arrio arros arroz artes asada asado asana asilo asnos aspar aspas aspra assai assam assar assas assaz assei assem asses assim assou astra astro asura ataca ataco atada atado atama atava atear ateia ateou ateus ateve atina atino atira atire atiro ativa ative ativo atlas atola atrai atris atriz atroz atual atuam atuar atuei atuem atuns atuou atura ature aturo audaz auges aulas auras auris autor autos autua avais avara avari avaro aveia avena aviar avisa avise aviso aviva axial axila azara azeda azedo azera azeri azias azoto azuis azula azura azure babam babar babau babei babel babem baber babes babou bachi bacia bacio bacon badal baeta bafos bagas bagos bagre baila baile baita baixa baixe baixo bajas balam balas balbo balda balde baldo balem balho balio baloo balsa balta bamba bambo bambu banal banas banca banco banda bande bando banem banes banga bango bangs bangu banha banhe banho bania banir baniu banja banjo banta banto bantu banza banzo baque barba barbe barbi barbo barca barco barda bardo bares barga baril baris baroa barra barre barri barro barsi basal basar basca basco bases basso basta baste basti basto batam batas batei batel batem bater bates bateu batia batom bauma bauru bazar bazas beata beato bebam bebas bebei bebem beber bebeu bebia bebum becas becos bedel begum beija beije beijo beiju beira beire belas belda belga belos bemol benda benga benim benta bento benza benze benzi benzo beque beras berma berna berne berra berre berro berta besta beste betar betas betis bibas bicam bicar bicas bicha bicho bicos bicou biela bifes bigas bijou bijus biles bilha bilro bimba bimbo binda binga bingo binha bioma biota bipes bique birra birro bisar bisca bisco bisel bisou bispa bispo bisso bitar bites bixas blefa blefe blitz bloco bloga blogo blogs blues blusa boate boato bobas bobes bobos bocal bocas bocha boche bodas bodes bodum bofes bogas bogue bogum boiam boiar boias boiei boies boina boiou boiro boite bojos bolam bolar bolas bolbo boldo bolei boles bolha bolim bolor bolos bolou bolsa bolso bomba bombe bombo bonde bondi bondo bonga bongo bonzo boque boras borda borde bordo borga boris borla borna borne borno boros borra borre borro bossa bosse bosso bosta botam botar botas botei botem botes botim botos botou bouba bouro boxes braba brabo brada brade brado braga brama brasa brava brave bravo break breca breda brega breja brejo brete breve brica brida bride briga brigo brios brisa brise brita brite brito briza broas broca broco broda broma bromo brota brote broto broxa broxe bruma bruna brune bruni bruno bruta bruto bruxa bruxo bubas bucal bucha bucho bucos budas bufar bufas bufos bufou bugio bugle bugre bulas bulbo bules bulha bulir bumba bumbo bunce bunda bundo bunga bungo burca burel burgo buril burla burle burne burra burro bursa busca busco busto butil butim bytes caaba caama caapi cabal cabaz cabem caber cabes cabia cable cabos caboz cabra cacau cacei cacem cacha cache cacho cacos cacto cadas cades cafta cagam cagar cagas cagou cague caiam caias caiba caibo caiem cairo caixa cajus calai calam calar calas calau calce calda caldo calei calem cales calha calhe calma calme calmo calor calos calou calum calva calvo camas camba cambo campa campe campi campo canal canas canda cando canga canha canil canis canja canoa canos cansa canse canso canta cante canto capai capar capas capaz capes capim capta capte capto caput capuz caqui caral caras cardi cardo carga cargo caria caril cario caris cariz carma carme carna carne caros carpa carpe carpi carpo carra carre carri carro carta carte carto carva casai casal casam casar casas casca casco casei casem cases casos casou caspa cassa casse casso casta casti casto catai catam catar catas catei cates catou catre cauda cauim caule causa cause causo cavam cavar cavas cavei cavem caves cavou cecal cedam cedem ceder cedes cedeu cedia cedro cegam cegar cegas cegos cegou cegue ceias ceiba ceifa ceira ceita celas celos celsa celso celta cenas cenho censo cento cepas cepos ceram ceras cerca cerce cerco cerda cerdo cerem ceres cerne cerol cerra cerre cerro certa certe certo cerva cervo cessa cesse cesso cesta cesto cetas cetim cetro chabu chace chaco chaga chala chalo chama chame chamo chana chans chapa chape chapo chara charo chata chato chats chave chavo checa checo chefa chefe chega chego cheia cheio chela cheta chiam chiar chiba chibo chica chico chies chila chile chili chima china chine chino chiou chips chiru chita choca choco chola chole cholo chona chope chopp chora chore choro chota chova chove chuca chuco chula chulo chupa chupe chupo chuta chute chuto chuva ciana ciano ciara ciber ciclo cidra cifra cifre cimas cimol cimos cinca cinco cinda cindi cindo cines cinge cinta cinto cinza ciosa cioso circo cisca cisco cisma cismo cisne cisto citam citar citas citei citem cites citou civil civis clade clado clama clame clamo clara claro claus clava clave clavo clear clero clica clico clima cline clipe clips clive clona clone cloro clube coado coage coagi coala coamo coate coati cobol cobos cobra cobre cobri cobro cocal cocas cocei cocha coche cocho cocoa cocos codal coesa coeso cofap cofre coger coias coice coifa coima coina coins coiro coisa coise coiso coita coito colam colar colas colei colem coles colha colhe colhi colho colmo color colos colou colza comam comas comba combe combi combo comei comem comer comes comeu comia comil comis comum conas conca conce conda conde condi condo cones conga congo conha conta conte conto copal copam copas copei copel copie copio copos copra copro copta coque coral coram corar coras corda cordo corei cores corgo coria corja corna corne corno coroa coroe coros corou corpo corra corre corri corro corsa corso corta corte corti corto corvo cosas cosco coser cosia cosmo cospe cossa cosso costa costo cotai cotar cotas cotes cotia cotos cotra coube couce coura couro cousa couto couve covas covil covis coxas coxia coxim coxos cozem cozer cozeu cozia craca crack crase crato crava crave cravo crede credo creem creia creio crema creme crepe creta crete criam criar crias crica crida crido criei criem cries crime crina criou crise crivo croca croce croco croma crome cromo crono cruas crude crudo cruel crupe cruza cruze cruzo cubas cubes cubos cubra cubro cucas cucos cueca cuias cuida cuide cuido cujas cujos cujus culpa culpe culpo culta culto cumes cunha cunho cupim cupom curai curam curar curas curau curda curdo curei curem cures curie curou curra curro curry cursa curse curso curta curte curti curto curva curve curvo cusco cuspa cuspe cuspi cuspo custa custe custo cutes cutia dacar dadas dador dados dafne dalai dalas damas damos danai danar danas dance dando danei danem danes danos danou dante daqui dardo darei darem dares daria darma dassa datam datar datas dates datou davam davas debes decai decil decis dedal dedar dedos deduz deita deite deito deixa deixe deixo delas deles delia delis delta demba dembe demos dendo dengo densa dense denso dente dento depor deram derem deres derma derme dermo derre desai desas desce desci desda desde desdo desem deses despe despi dessa desse desta deste deter deusa devam devas devem dever deves deveu devia devir diaba diabo diana dicar dicas dicha diese dieta digam digas digna digne digno dilua dilui dimas dimba dinar dinas dinda dindo dines dinga dingo dinos diodo diona diosa diplo dique direi diria disca disco dispa dispo disse disso dista diste disto ditam ditar ditas ditem ditos ditou divas divos dizei dizem dizer dizes dizia doada doado doava doble dobra dobre dobro docas doces dodos doges dogma dogon dogue doida doido dojos dolce dolor domar domei domes domos domou donas donda donde dondo donga dongo donos donte dopar dopei dopou dores dorme dormi dorna dorso dosar doses dotar dotes dotou douda doula doura douro douta douto draga drago drama drena drene dreno drive droga drogo drupa drusa druso duais dubla dublo ducal ducha duche ducos ducto dudas duela duele duelo dueto dumas dumbo dunar dunas dupla duplo duque dural duram durar duras durei durem durex durma durmo duros durou dutos ebola ecoam ecoar ecoou edema edita edite edito educa educo eguns eidos eiras eixos ejeta elana elano elara elche elege elegi eleia eleja elejo eleva eleve elevo elfas elfos elida elide elina elite elmos emana emane emfim emita emite emiti emito emoto emula emule encha enche enchi encho endro enema eneva enfia enfie enfim enfio enjoa enjoe enjoo enoja enojo enter entes entoa entra entre entro envia envie envio erada erado erato ereta ereto ergam ergue ergui erica erice erige ermal ermas ermos erram errar erras errei errem erres error erros errou erval ervas escoa escoe escol esgar espie espio espoo esqui essas esses estai estar estas estes estio estol estos estou estro esvai etano etapa eteno ethos etila etilo etios etnia euros evade evita evite evito evoca evoco evola exala exale exalo exame exata exato exiba exibe exibi exibo exige exigi exija exijo exila exile exime exita exite expia expor expus extra exuma fabro facas faces facha facho facie facto fadas fades fados faial faias faina faire faixa faixo falai falam falar falas falco falda falei falem fales falha falhe falho falir faliu falos falou falsa false falso falta falte falto famas fanar fando fanfa fanha fanho fante faram farda fardo farei fares faria faris farme farol farpa farra farro farsa farta farte farto fases fatal fates fatia fatie fatio fator fatos fauna fauno favas favor favos faxes fazei fazem fazer fazes fazia febra febre fecal fecha feche fecho fedem feder fedeu fedia fedor fedra feias feios feira feiro feita feito feixe feliz felpa fenda fende fendi fenol fenos feral feras ferem feres feria ferir feriu fermi feroz ferra ferre ferro ferva ferve fervi fervo festa feste festo fetal fetos fetus feudo fezes fiada fiado fiapo fiava fibra fibro ficai ficam ficar ficas ficha fiche ficou ficta figas figos filar filas files filha filho filia filie filio filma filme filmo filos filou final finas finca finco finda finde findo fines finge fingi finis finja finjo finos finou finta fique firam firas firma firme firmo fisco fisga fisio fitam fitar fitas fitei fitos fitou fixam fixar fixas fixei fixem fixes fixos fixou fizer flaco flama flame flare flash flato flava flete flexo floco flora flore flori floro flota fluam fluem fluir fluiu flume fluxo fobia focal focam focar focas focos focou focus fodam fodas fodem foder fodes fodeu fodia fofas fofos fogem foges fogos foice foina folar foles folga folgo folha folho folia folie folio fomes fomos fones fonia fonte foque foral foram foras force forde forem fores forja forje forma forme formo forna forno foros forra forte fosca fosco fossa fosse fosso foste fotos fraca fraco frade fraga frago frase frear freei frege freia freie freio freis frene freno freon freou fresa frete frevo frias frigo frios frisa frise friso frita frite frito frota fruir fruta fruto fucei fufas fugas fugaz fugia fugir fugiu fugue fujam fujas fujir fulas fulda fulvo fumam fumar fumas fumei fumem fumes fumos fumou funai funda funde fundi fundo funes funfa funga funge fungo funil funis furam furar furei furem furna furor furos furou furta furto fusca fusco fusos fuste futre fuzil fuzis gabam gabar gabas gabei gabes gabou gacha gados gaeta gafas gafes gagas gagos gaios gaita gajas gajos galar galas galba gales galga galgo galha galho galos galra gamar gamas gambo gamei games gamou ganas ganda gando ganem ganga ganha ganhe ganho ganir ganja gansa ganso ganta ganza garbo gares garfo garis garni garoa garra garro gases gaspa gasta gaste gasto gatas gates gatil gatos gaura gauss gazal gazes gazua geada geena gelam gelar gelei gelos gelou gemas gemem gemer gemeu gemia genes genia genoa genos genro gente geode gerai geral geram gerar geras gerei gerem geres geria gerir geriu germe gerou gerra gesso gesta geste gesto getas gibis gigas gimel ginga ginja giram girar giras girei girem giros girou gizes gleba glide glifo globo glosa glote gnoma gnomo gnose godos goela goesa goiva golas goldi golem goles golfe golfo golos golpe gomas gomes gomos gondo gonga gongo gonzo gorar gorda gordo gorne gorno gorou gorro gosma gosta goste gosto gotas gouda goura gozam gozar gozas gozei gozem gozes gozos gozou graal grada grade grado grafo grais grama grana grane grano grata grato graus grava grave gravo graxa graxo greco grega grego grelo greta grete greve grifa grife grifo grila grilo grima gripe gripo grise grita grite grito grosa grose groso grota grous gruas gruda grude grudo grupa grupo gruta guaco guada guano guapo guede guera gueri gueto guiai guiam guiar guias guida guide guido guiei guiem guiga guigo guina guiou guira guisa guise guita guito guiza guizo gumbo gumes gunas gunda gunga guria guris gurus gusta gusto hacer hadji hajam hajas halos hamsa handa hansa haras haris harpa harpo hasta haste haver havia hedra hemos henry hepta heras herda herde heres hertz hiato hidra hidro hiena hifas himba hindi hindu hines hinos hiper hirta histo hobby holos homem homos honor honra honre honro hopis horar horas horda horei horta horto hoste hotel houve https hulha humor humos hunos hurra hutus iaque iaras iates ibere ibero ibira ibope idade ideal ideia idosa idoso iduna ienes igaci igara iglus igual ilesa ileso ilhas iluda ilude iludi iludo imago imame imita imite imito impor impus imune inala inale inata inato incas incha inche incia incio indas indol induz infla infra iniba inibe inibi inova inove insta inter intra intui iogue iolco ipeca ipsis irada irado irani irdes ireis irena irene ireno iriam irias irina irmos iscas ismos isola isole isolo issei istas istmo itens itobi iuris jabes jabre jacas jacta jacto jades jaina jales jamba jambo jambu jamis janai janas janes janga jango janja janos janta jante janto japas jaque jarda jarra jarro jaspe jatos jaula jazem jazer jazia jeans jegue jeito jejua jejue jejum jesus jimbo jinga jingo jipes jirau joana joane jogai jogam jogar jogas jogos jogou jogue joias jolas jonas jones jongo jorge jorna jorra jorro jotas joule jovem juana jubas judas judeu judia judie judio jugal jugar jules julga julgo julho junco jundo junge junho junta junte junto jurai juram jurar juras jurei jurem juris juros jurou justa juste justo jutos karts khmer labor lacas laces lacra lacre lacta lacto lados ladra ladro lagar lages lagoa lagos laica laico lajas lajes lalas lalau lamas lamba lambe lambi lambo lampe lanai lance landa lande landi lanes langa lango lapas lapso lardo lares larga largo laris larra larva lasca lasco laser lassa lasse lasso latam latas latem later lates latia latim latir latiu lauda laude laudo laura lauro lavai lavam lavar lavas lavei lavem laves lavor lavou lavra lavre lazer leais lebre lecas ledes legal legar legba legis legou legue leiam leias leiga leigo leila leira leiro leita leite leito leiva leles lemas lembo lemes lemos lenas lenda lendo lenga lenha lenho lenir lenis lenta lente lento leoas leone lepra leque leram lerda lerdo lerei lerem leres leria lerna lesam lesar lesem lesma lesou lesse lesta leste letal letra leuca leuco levai levam levar levas levei levem leves levou lhama liame liana liara liase liber libra libre libro licas liceu licor licra lidam lidar lidas lidei lidem lides lidos lidou ligam ligar ligas light ligou ligue limar limas limbo limes limos limpa limpe limpo linas lince linda linde lindo linfa linfo linga lingo linha linho links liras lisas lisca lisos lissa lista liste listo lites litro lives livor livra livre livro lixam lixar lixas lixei lixem lixes lixos lixou lobas lobby lobos local locar locas locou locus lodos logam logar login logon logos logou logra logro logue loios loira loire loiro lojas lomba lombo lonas londo longa longe longo lopes loque loras lorca lorde losna lotam lotar lotas lotes lotou louca louco loura louro lousa louva louve louvo luana luane lubas lucas lucha lucho lucra lucre lucro luena lugar lugol lulas lulus lumes lumia lunar lunas lunda lundu lunga lungo lupas luque lusas lusca lusco lusos lutam lutar lutas lutei lutem lutes lutos lutou lutra luvas luxos luzes luzia luzir maari macau macha macho macia macie macio macro macua mades madis madre mafra magal magas magda magia magie magma magna magno magoa magoe magoo magos magra magro mahdi maiar maias maina maino maior maios maire maita major malai malam malar malas males malga malha malhe malho malis malou malta malte malto malus malva malvo mamai mamam mamar mamas mamba mambo mamei mames mamoa mamou manar manas manca manco manda mande mandi mando mandu manel manga mango mania manis manja manje manjo manju manos manou mansa manso manta manto manus maori mapas maple maqui marar maras marau marca marda mares marfa marga marge margi margo maria marim maris marja marma marmo marna marra marta marte marto masca massa masse masso matai matam matar matas matei matem mates matis matiz matos matou matus maura mauro maxim maxis mazar meada meado meara meato mecha meche medas medem medes medir mediu medos medra megas meias meiga meigo meios melar melas melba melda meles melga melia meloa melou melro memes mende mendi mendo menem menes mengo menir menor menos mensa menso menta mente menti mento menus meras merca merda merlo mermo meros mesas meses mesma mesmo messa messe metal metam metas metem meter metes meteu metia metil metra metre mexam mexas mexem mexer mexes mexeu mexia mezzo miado miami miava micas micha micos micra micro midas migas migra migre migue miina mijam mijar mijas mijei mijou miles milha milho milos mimam mimar mimas mimei mimem mimes mimis mimos mimou minam minar minas minei mines minga mingo minha minie minor minou minta minto miojo miola miolo mioma mioto mirai miram mirar miras mirei mirem mires mirim mirou mirra mirta mirto misca mises missa misse mista misto mitas mites mitos mitra mitre mixar mixes mixou moais mocha moche mochi mocho modal modas modem modos modus moeda moela mofar mofos mogno mogol moina moins moios moira moita moito molar molas molda molde moles molha molhe molho momos monas monda monde mondo monel monge mongo monia monir monis monja monos monta monte monto moral moram morar moras morbo morda morde mordi mordo morei morem mores morfo morga moria morim moris mormo morna morne morno morou morra morre morri morro morsa morse morta morte morto morus mosca mosco mossa mosse mossi mosso mosto motas motel motes motim motor motos mouco moura moure mouro mouse mouta movam movem mover moves moveu movia mucha muche mucos mudam mudar mudas mudei mudem mudes mudez mudos mudou mudra muela muere mufla mufti mugir muita muito mulas mulim multa multe multi multo mumbo munda mundo mungo munha munir munis munto muque murai mural murar muros murro murta musal musas musca museu musgo mussa musse musta musto mutia mutos mutum nabal nabos nacos nadai nadal nadam nadar nadas nadei nadem nadim nadir nados nadou nafis nafta nagai nagar nagas naide naifa naipe naira nairo najas nambu nanar nanas nandi nando nandu nanga naque narco nardo nariz narra narre narro nasal nasce nasci nassa nasse natal natas natos nauro nauta naval navas naves navio nazis necas necro neera negai negam negar negas negou negra negro negue negus nelas neles nelma neons nepal nepos nerds neres nervo nesga nessa nesse nesta neste netas netos neuma neura neuro nevar neves nevou nexos ngola nhaca nicas niche nicho nicol niger nigra nimas nimbo ninar ninas ninfa ninha ninho ninja nique nisso nisto nitro nobel nobre nodal nodes nodos noise noite noiva noivo nomes nomos nones nonos noras norbu norma norte nossa nosso notam notar notas notei notem notes notou noute noval novas novel novem noves novos nozes nubla nucal nudez nulas nulos numas nunca nunes nutra nutre nutri nutro nutum nuvem nylon obesa obeso obrar obras obsta obter ocara ocaso ocres octal ocupa ocupe ocupo odara odeia odeie odeio odiar odiei odila odiou odone odres oeste ogiva ogres ogros oitis olaia olhai olhal olham olhar olhas olhei olhem olhes olhos olhou oligo oliva olive olivo olmos omaha omani ombro omita omite omiti omito omnes omolu onaga ondas ondem ondes onera ontem opaca opaco opala opera opere opero opina opine opino optam optar optei optem optou orada orado orago orais orava orcas ordem ordos oreia orgia orica orlas ornam ornar ornou orque osana osgas osler ossos osteo ostra otelo otite otoni ouros ousam ousar ousas ousei ousem ousou outas outra outro ouvem ouves ouvia ouvir ouvis ouviu ovada ovais ovina ovino ovula oxida oxide ozone ozono pacas pacho pacta pacto pacus padma padre padro pafos pagai pagam pagar pagas pagem pager pagos pagou pague paina pains paiol paira paire paiva pajem palas palco paleo pales palha palio palma palme palmo palos pampa pampo panam panas panco panda pande pando panem panes panga pango panha panis panos panta papai papal papam papar papas papei papel papes papos papou papua paqui parai param parar paras parca parco parda parde pardo parei parem pares parga pargo parir paris pariu parla parle parlo parma parou parra parre parse parta parte parti parto parva parvo pasma pasme pasmo passa passe passo pasta paste pasto patas patau patel patim patis patos pauis paula paule paulo pausa pause pauta paute pavia pavio pavor pazes peale pebas pecar pecha peche pecou pedal pedem pedes pedia pedir pedis pediu pedra pedro pegam pegar pegas pegos pegou pegue peias peida peide peido peine peita peito peixe pelar pelas peles peleu pelor pelos pelve pemba penal penar penas penca pence penda pende pendo penei penes penha penou pensa pense penso penta pente peoas pepel pepes peque pequi peral peras perca perce perco perda perde perdi peres peris perla perle perma perna perno perra perro persa perto perua perus pesam pesar pesas pesca pesco pesei pesem pesos pesou peste petal petar petas petiz petra piaba piada piado piaia piana piano piaus piava picam picar picas picha piche picos picou picto piezo pifar pifou pilar pilas piles pilha pilho pimba pimpa pinar pinas pince pinda pinel pines pinga pingo pinha pinho pinos pinta pinte pinto piola piora piore pioro pipas pipes pique piqui piram pirar piras pirei pirem pires pireu pirex piris pirou pisam pisar pisas pisca pisco pisei pisem pisos pisou pissa pista pisto pitar pitas pitis pitom pitos pitou pixel pizas pizza placa plaga plana plane plano pleas plebe plena pleno plexo plica plomo pluga pluma plume pluri plush pluto pneus pobre pocha poche pocho podar podas podem poder podes podia podou podre poejo poema poeta poios poisa poise poiso polar polas polca poles polia polir polis poliu polme polos polpa polua polui polvo pomar pomba pombo pomes pomos pompa ponce ponde pondo pongo ponha ponho ponta ponte ponto poque porca porco porei pores poria poros porra porre porro porta porte porto posam posar posca posei poses posou possa posse posso posta poste posto potes potos potra potro pouca pouco poule poupa poupe poupo pousa pouse pouso povos prado praga praia prais prana prata prato pravo praxe praza prazo prece prega prego preia prelo prema premi presa prese preso preta preto previ preza preze prezo prima prime primi primo prior prius priva prive privo proas proba probo prole prona prono prosa prose proto prova prove provi provo pruma prumo psico psoas ptose pucha puder pudim pudor pufes pugna pulam pular pulas pulei pulem pulga pulha pulos pulou pulsa pulse pulso pumas pumba punam punem punga punha punho punia punir puniu punks punta punto pupas puras purga purim puros puser putas putos puxam puxar puxas puxei puxem puxou quado quais quark quaro quase quati queca queda quede quedo quela quele quelo quena quepe quera queri quero quete queto quias quibe quico quilo quimo quina quine quino quita quite quito quivi quota quote rabia rabis rabos racha rache racho radar radia raffa raffo raiam raiar raias raide raiom raios raiou raiva rajas ralam ralar ralas ralei ralha ralho ralis ralos ralou ramal ramas rambo ramis ramos rampa ranca rance ranga range rango ranha ranho rapar rapas rapaz rapei rapel rapou rapta rapte rapto raque raras rares raros rasar rasas rasca rasga rasgo rasos raspa raspe raspo rasta rasto ratar ratas ratel rates ratio ratos raves razia reage reagi reais reaja reajo reata reate rebel rebus recai recta recto recua recue recuo reder redes redil redis redor redox reduz refaz refez refil refis refiz refle regal regam regar regas regem reger reges regeu regos regou regra regue reina reine reino relar reler reles releu relho relia reluz relva remam remar remei remem remir remix remos remou renal renas renda rende rendi rendo renha renta rente repas repor repto reque reses resma respe resta reste resto retal retas reter retor retos retro reuni reuso revel rever revez revia reviu reyes rezai rezam rezar rezas rezei rezem rezes rezou riais riana riata ribas ribes ricas ricos rides rifar rifas rifle rifte rigor rijas rijos riles rimam rimar rimas rimei rimes rimos rimou rindo rinha rioja ripar ripas rique riram rirem rires riria risca risco risos rissa risse risso riste ritas ritmo ritos rival rixas robes roble robot rocam roces rocha rocio rodam rodar rodas rodei rodem rodes rodos rodou rogai rogam rogar rogos rogou rogue rojas rolam rolar rolas rolei rolem roles rolha rolim rolos rolou romar rombo romeu rompa rompe rompi rompo ronca ronco ronda ronde rondo ronha roque rosal rosas rosca rosco roses rosna rosne rosno rosta rosti rosto rotam rotas rotor rotos rouba roube roubo rouca rouco rouge round roupa roxas roxos ruano rubim rubis rublo rubor rubra rubro rudes ruela rufam rufar rufem rufia rufos rugas rugem rugia rugir rugiu ruins ruiva ruivo rules rumam rumar rumba rumbo rumor rumos rumou runas rupia rural rusga russa russe russo rutas sabei sabem saber sabes sabia sabin sabir sable sabor sabra sabre sacal sacam sacar sacas sacha sacia sacie sacis sacos sacou sacra sacre sacro sadia sadio safam safar safas safei safer safou safra sagas sagaz sages sagra sagui saiam saias saiba saide saino salas salda saldo salga salmo salsa salta salte salto salus salva salve salvo samba sambo samos sampa sanam sanar sanca sanda sande sando sanga sango sanha sanja sanjo sanou sansa santa santo sapal sapas sapos saque sarai saram saran sarar saras sarau sarda sardo sarei sargo saria saris sarja sarna sarno sarou sarra sarre sarro sarte sarto sasse sasso satis sauna sauro scone scope score seara sebas sebes sebos secam secar secas secos secou secta sedam sedar sedas sedem sedes sedia seduz segar seges segue segui seios seira seita seite seiva seixo sejam sejas selam selar selas selem seles selim selos selou selva semas semba senas senda sendo senga senha senho senil senis senos senra senso sensu senta sente senti sento sepse septa septo seque serei serem seres seria seris serna serpa serra serre serro serva serve servi servo sessa sesso sesta sesto setar setas setes setor sexos sexta sexto short shows shoyu siamo siclo sidos sidra siena sigam sigas sigla sigle siglo sigma signa signe signo silas silos silte silva silvo simas simba sinai sinal sinar sinas sindi sindo sines singa sinos sinta sinto siris sirte sirva sirvo sisal sismo sisos sitar sitas sites sitos sitra situa situe sivas skate slide soada soado soajo soava sobas sobem sobes sobra sobre sobro socam socar socas socos socou sodas sofia sofra sofre sofri sofro sogra sogro soito solar solas solda soldo solei soles solha solos solou solta solte solto solve somam somar somas somei somem somes somos somou sonam sonar sonda sonde sones songa sonha sonhe sonho sonos sonsa sonso sopas sopra sopre sopro soque sorbo sores sorgo sorna soror soros sorri sorta sorte sorva sorve sorvo soube sousa souta souto souza sovar spans spins split spray stato steno stops stout suada suado suano suava suave subam subia subir subiu sucam sucia sucos sucre sudam sueca sueco suede suevo sufis sugai sugam sugar sugas sugou sugue sujam sujar sujas sujei sujem sujos sujou sulco sumam sumia sumir sumiu sumos sunga super supor supra supre supri supus surco surda surdo surfa surfe surfo surge surgi surja surra surta surte surto sushi sussu susta susto sutil sutis sutra tabas tabes tabla taboa tabor tabus tacar tacha tacho tacos tacou tacto tagma taiga taine taipa taipe taira talar talas talco tales talha talhe talho talis talma talos tamas tamba tamis tamos tampa tampe tampo tamuz tanas tando tanga tange tango tanho tanis tanja tanso tanta tanto tapai tapam tapar tapas tapei tapem tapes tapir tapou taque taqui tarar taras tarda tarde tardo tares taria tarja tarol tarro tarso tarte tasca tasco tatau tatos tatra tatsu tatua tatue tatus taura tauro tavas taxam taxar taxas taxes taxou tchau tease tebas tecem tecer teceu tecia tecla tecle teclo tecno tecto tecum teias teima teime teimo teira teixo tejas telas telem teles telex telha telho temam temas temei temem temer temes temeu temia temor temos tempe tempo tenar tenaz tenda tende tendi tendo tenha tenho tenor tenra tenro tensa tense tenso tenta tente tento tepes teque terei terem teres tereu teria terma termo terna terno terra terre terro tersa teses tesla tesos testa teste testo tetas tetos tetra tetro teuto texto tiana tiano tiara tibar tiber ticar ticas tidas tidos tieta tigre tilda tilde tiles timas timba timbu times timol timor timos tinas tinga tinge tingi tinha tinir tinja tinta tinto tipos tique tirai tiram tirar tiras tirei tirem tires tiros tirou tirso titia titio tiver tiziu toada tobas tobin tocam tocar tocas tocha tocho tocos tocou todas todos togas toiro tojal tolar tolas tolda toldo tolha tolhe tolos tomai tomam tomar tomas tomba tombe tombo tomei tomem tomes tomos tomou tonal tonar tondo tonel toner tones tonga tongo tonha tonho tonia tonou tonta tonto topam topar topas topaz topei topem topes topos topou toque toral torar toras torce torci torda tordo tores torga torgo torna torne torno toros torpe torra torre torro torso torta torto torus tosar tosas tosca tosco tosse tossi tosta toste tosto total totem touca toura toure touro trace trade trado traem traga trago traia traio trair trais traiu traja traje trajo trama tramo trane trans trapa trapo trata trate trato trava trave travo treco trela trema treme tremi tremo trena trens trepa trepe trepo treta treva trevo treze trial tribo trica tries trigo trina trine trini trino trios tripa tripo trips trite troar troca troce troco trofa troia trole trona trono tropa trope tropo trota trote trova trove trovo truca truco trude trufa trupe truta tubal tubas tubes tubos tucho tucum tufos tugas tulha tumba tumor tunar tunas tunde tunes tunga tupis turba turbe turbo turca turco turfa turfe turia turma turno turra turva turvo tusca tussa tusso tutor tutti tutus ufana uiara uigur uivam uivar uivos uivou ulnar ultra umari umbra umbro unges ungir ungiu unhas uniam unida unido unimo untar upado urais urano urbes urdir ureia urgia urias urina urine urnas urrar urros urrou ursas ursos urubu urucu urutu urzes usada usado usamo usava useis usina usual usura utena uvaia vacas vacum vades vadia vadio vagal vagam vagar vagas vagem vagos vagou vague vaiam vaiar vaias vaiou valar valas valda valdo valei valem valer vales valeu valgo valha valho valia valor valos valsa valva vamos vampi vanda vande vando vante vapor varal varar varas vares varga varia varie varis varna varoa varou varra varre varri varro vasca vasco vasos vasta vasto vatel vazam vazar vazas vazei vazem vazes vazia vazio vazou veada veado vedam vedar vedas vedes vedor vedou vedra veias veiga veios veira vejam vejas velam velar velas veles velha velho velos veloz vemos venal vence venci venda vende vendi vendo venha venho venta vente vento veraz verba verbo verde verei verem veres verga vergo veria veris verme verna verne verno versa verse verso verta verte verti verto verve vesga vesgo vespa vesse vesta veste vesti vetam vetar vetor vetos vetou vezes viada viado viaja viaje viajo viana vibra vibre vibro vices vichi vicia vicie vidar vidas vides vidor vidro viela viera vigas vigem viger vigia vigie vigio vigna vigor vilar vilas vimes vimos vinca vinco vinda vinde vindo vinga vingo vinha vinho vinil vinis vinte viola viole violo viral viram virar viras virei virem vires virgo viria viril viris virou visam visar visas visca visco visem visgo visom visor visou visse vista viste visto vitae vital vitas vitro vitus vivam vivar vivas vivaz vivei vivem viver vives viveu vivia vivos vizir voada voado voava vocal vodca vogal vogue voile volar volos volta volte volto volts volvo vonda voraz vossa vosso votam votar votas votei votem votes votos votou vozes vulgo vulto vulva watts weber xaile xales xampu xaria xaxim xelim xenos xeque xerez xerox xiita xinga xingo xisto xogum xonas xonou xotas xotes xucra xucro zagor zaida zaira zaire zamba zambi zampa zanga zango zante zanza zarco zarpa zarra zarro zebra zefir zelam zelar zelem zelos zenas zenda zeram zerar zerei zeros zerou zetas zetta zimbo zinco zines zinga zinho zoada zoado zoava zomba zombe zombo zonal zonas zones zonza zonzo zorra zorro zulus zumba zumbi zunga zunir";
+const ACC={"estao": "estão", "entao": "então", "voces": "vocês", "video": "vídeo", "serie": "série", "forca": "força", "manha": "manhã", "porem": "porém", "atras": "atrás", "saude": "saúde", "facil": "fácil", "marco": "março", "unico": "único", "unica": "única", "serio": "sério", "nivel": "nível", "irmao": "irmão", "epoca": "época", "areas": "áreas", "serao": "serão", "razao": "razão", "uniao": "união", "radio": "rádio", "acoes": "ações", "lider": "líder", "media": "média", "medio": "médio", "preco": "preço", "verao": "verão", "visao": "visão", "saida": "saída", "praca": "praça", "japao": "japão", "graca": "graça", "otimo": "ótimo", "danca": "dança", "opcao": "opção", "midia": "mídia", "terca": "terça", "album": "álbum", "india": "índia", "pecas": "peças", "otima": "ótima", "sitio": "sítio", "aguas": "águas", "braco": "braço", "inves": "invés", "ceara": "ceará", "nacao": "nação", "aviao": "avião", "terao": "terão", "virus": "vírus", "audio": "áudio", "lanca": "lança", "forum": "fórum", "secao": "seção", "facam": "façam", "orgao": "órgão", "alias": "aliás", "heroi": "herói", "recem": "recém", "salao": "salão", "mamae": "mamãe", "senao": "senão", "arabe": "árabe", "aerea": "aérea", "metro": "metrô", "nocao": "noção", "tenis": "tênis", "copia": "cópia", "licao": "lição", "reune": "reúne", "obvio": "óbvio", "irmas": "irmãs", "socio": "sócio", "etica": "ética", "siria": "síria", "goias": "goiás", "guine": "guiné", "cesar": "césar", "botao": "botão", "movel": "móvel", "acido": "ácido", "suica": "suíça", "aereo": "aéreo", "bebes": "bebês", "juizo": "juízo", "preve": "prevê", "belem": "belém", "alema": "alemã", "lesao": "lesão", "piaui": "piauí", "dolar": "dólar", "calca": "calça", "lacos": "laços", "volei": "vôlei", "farao": "farão", "fieis": "fiéis", "turne": "turnê", "exito": "êxito", "patio": "pátio", "saido": "saído", "icone": "ícone", "limao": "limão", "uteis": "úteis", "penis": "pênis", "terco": "terço", "tunel": "túnel", "fusao": "fusão", "cacar": "caçar", "tesao": "tesão", "vilao": "vilão", "viuva": "viúva", "vicio": "vício", "bonus": "bônus", "porno": "pornô", "genio": "gênio", "idolo": "ídolo", "balao": "balão", "duzia": "dúzia", "indio": "índio", "libia": "líbia", "caido": "caído", "virao": "virão", "aneis": "anéis", "detem": "detém", "furia": "fúria", "racas": "raças", "ruido": "ruído", "lucia": "lúcia", "sudao": "sudão", "sabio": "sábio", "barao": "barão", "berco": "berço", "lapis": "lápis", "robos": "robôs", "utero": "útero", "aguia": "águia", "forro": "forró", "mante": "mantê", "lucio": "lúcio", "suite": "suíte", "expoe": "expõe", "graos": "grãos", "vacuo": "vácuo", "juiza": "juíza", "cafes": "cafés", "femea": "fêmea", "leoes": "leões", "podio": "pódio", "trara": "trará", "sodio": "sódio", "helio": "hélio", "mocas": "moças", "sirio": "sírio", "fogao": "fogão", "sabao": "sabão", "miuda": "miúda", "impoe": "impõe", "saira": "sairá", "refem": "refém", "animo": "ânimo", "mafia": "máfia", "simao": "simão", "traco": "traço", "avila": "ávila", "mutuo": "mútuo", "pocos": "poços", "darao": "darão", "ciume": "ciúme", "supoe": "supõe", "sutia": "sutiã", "obtem": "obtém", "obvia": "óbvia", "epico": "épico", "mutua": "mútua", "otica": "ótica", "porao": "porão", "jeova": "jeová", "mocao": "moção", "merce": "mercê", "suico": "suíço", "apice": "ápice", "etico": "ético", "exodo": "êxodo", "anoes": "anões", "doria": "dória", "expos": "expôs", "gemea": "gêmea", "oucam": "ouçam", "iamos": "íamos", "tacas": "taças", "tabua": "tábua", "tedio": "tédio", "obito": "óbito", "racao": "ração", "traca": "traça", "impos": "impôs", "cacas": "caças", "taxis": "táxis", "ossea": "óssea", "umido": "úmido", "lenco": "lenço", "lobao": "lobão", "oscar": "óscar", "habil": "hábil", "labio": "lábio", "macas": "maçãs", "miudo": "miúdo", "torax": "tórax", "impar": "ímpar", "acude": "açude", "padua": "pádua", "timao": "timão", "dirao": "dirão", "livia": "lívia", "ruina": "ruína", "tufao": "tufão", "epica": "épica", "danco": "danço", "islao": "islão", "macae": "macaé", "melao": "melão", "titas": "titãs", "oleos": "óleos", "gabao": "gabão", "gemeo": "gêmeo", "regua": "régua", "venca": "vença", "durao": "durão", "negao": "negão", "vitor": "vítor", "fenix": "fênix", "socia": "sócia", "vazao": "vazão", "capao": "capão", "lixao": "lixão", "pavao": "pavão", "tiete": "tietê", "traze": "trazê", "ansia": "ânsia", "giria": "gíria", "oasis": "oásis", "seras": "serás", "vagao": "vagão", "buque": "buquê", "peoes": "peões", "tulio": "túlio", "gavea": "gávea", "pecam": "peçam", "atomo": "átomo", "orfao": "órfão", "nenem": "neném", "lanco": "lanço", "nevoa": "névoa", "usara": "usará", "arduo": "árduo", "oxido": "óxido", "futil": "fútil", "latao": "latão", "latex": "látex", "torco": "torço", "ardua": "árdua", "caida": "caída", "chale": "chalé", "gamba": "gambá", "mamao": "mamão", "mumia": "múmia", "betao": "betão", "cocar": "coçar", "caira": "cairá", "lirio": "lírio", "espia": "espiã", "guiao": "guião", "opoem": "opõem", "papao": "papão", "pocao": "poção", "polen": "pólen", "sotao": "sótão", "tuite": "tuíte", "tenue": "tênue", "arido": "árido", "umida": "úmida", "araxa": "araxá", "regia": "régia", "libio": "líbio", "oxala": "oxalá", "povao": "povão", "ziper": "zíper", "ambar": "âmbar", "italo": "ítalo", "advem": "advém", "aquem": "aquém", "viuvo": "viúvo", "atrio": "átrio", "aurea": "áurea", "colon": "cólon", "lilas": "lilás", "litio": "lítio", "suina": "suína", "telao": "telão", "atila": "átila", "tamil": "tâmil", "uncao": "unção", "omega": "ômega", "alcas": "alças", "antao": "antão", "galao": "galão", "povoa": "póvoa", "ovulo": "óvulo", "facao": "facão", "pacos": "paços", "teras": "terás", "debil": "débil", "pagao": "pagão", "semen": "sêmen", "trico": "tricô", "dedao": "dedão", "lotus": "lótus", "pezao": "pezão", "quica": "quiçá", "reves": "revés", "varao": "varão", "desco": "desço", "moida": "moída", "acola": "acolá", "pinca": "pinça", "sauda": "saúda", "acida": "ácida", "duble": "dublê", "docil": "dócil", "baiao": "baião", "civel": "cível", "dende": "dendê", "mocos": "moços", "avido": "ávido", "bones": "bonés", "rimel": "rímel", "ageis": "ágeis", "icaro": "ícaro", "babas": "babás", "caico": "caicó", "desca": "desça", "barem": "barém", "guara": "guará", "locao": "loção", "pocas": "poças", "afega": "afegã", "bolao": "bolão", "pareo": "páreo", "bobao": "bobão", "cacam": "caçam", "garca": "garça", "lupus": "lúpus", "retem": "retém", "veras": "verás", "romao": "romão", "treno": "trenó", "osseo": "ósseo", "depos": "depôs", "fluor": "flúor", "ligia": "lígia", "tripe": "tripé", "avela": "avelã", "femur": "fêmur", "oncas": "onças", "pisao": "pisão", "corao": "corão", "harem": "harém", "sosia": "sósia", "edipo": "édipo", "olhao": "olhão", "orixa": "orixá", "rocas": "roças", "orfas": "órfãs", "ecras": "ecrãs", "loica": "loiça", "ranco": "ranço", "suino": "suíno", "arida": "árida", "amago": "âmago", "cisao": "cisão", "ponei": "pônei", "tatui": "tatuí", "reuna": "reúna", "alibi": "álibi", "macos": "maços", "rojao": "rojão", "venus": "vénus", "nomea": "nomeá", "atica": "atiça", "calao": "calão", "racio": "rácio", "tibia": "tíbia", "ancia": "anciã", "panca": "pança", "puxao": "puxão", "egide": "égide", "moido": "moído", "avare": "avaré", "bocao": "bocão", "capua": "cápua", "carie": "cárie", "quale": "qualé", "sofas": "sofás", "cesio": "césio", "torca": "torça", "galia": "gália", "miope": "míope", "alamo": "álamo", "otico": "ótico", "caete": "caeté", "hifen": "hífen", "labia": "lábia", "agata": "ágata", "alcar": "alçar", "cagao": "cagão", "taina": "tainá", "pirao": "pirão", "curia": "cúria", "nasca": "nasça", "rugbi": "rúgbi", "saudo": "saúdo", "talao": "talão", "plato": "platô", "canon": "cânon", "pilao": "pilão", "derbi": "dérbi", "xango": "xangô", "ourem": "ourém", "timbo": "timbó", "gatao": "gatão", "nivea": "nívea", "avida": "ávida", "odios": "ódios", "macom": "maçom", "jesse": "jessé", "huila": "huíla", "pirai": "piraí", "cirio": "círio", "filao": "filão", "saxao": "saxão", "eguas": "éguas", "afoxe": "afoxé", "sinha": "sinhá", "dubio": "dúbio", "fucar": "fuçar", "jatai": "jataí", "matao": "matão", "oicam": "oiçam", "ebano": "ébano", "coupe": "coupé", "faras": "farás", "furao": "furão", "polio": "pólio", "xerem": "xerém", "chule": "chulé", "glace": "glacê", "rocar": "roçar", "tatil": "tátil", "umero": "úmero", "tuita": "tuíta", "baias": "baías", "girao": "girão", "depoe": "depõe", "nubia": "núbia", "sidao": "sidão", "calco": "calço", "humus": "húmus", "paria": "pária", "agira": "agirá", "dubia": "dúbia", "venco": "venço", "aureo": "áureo", "urico": "úrico", "pajeu": "pajeú", "sinho": "sinhô", "baoba": "baobá", "serta": "sertã", "sassa": "sassá", "arpao": "arpão", "doris": "dóris", "ratao": "ratão", "regio": "régio", "grena": "grená", "sifao": "sifão", "tetum": "tétum", "impio": "ímpio", "gamao": "gamão", "dalia": "dália", "supos": "supôs", "fofao": "fofão", "rabao": "rabão", "xamas": "xamãs", "licia": "lícia", "bario": "bário", "acaro": "ácaro", "catao": "catão", "corca": "corça", "pifia": "pífia", "babao": "babão", "tonus": "tônus", "abada": "abadá", "bilis": "bílis", "epoxi": "epóxi", "himen": "hímen", "lucao": "lucão", "pecem": "pecém", "vario": "vário", "cacao": "cação", "cipos": "cipós", "nodoa": "nódoa", "butia": "butiá", "jacui": "jacuí", "sepia": "sépia", "cacou": "caçou", "salem": "salém", "surui": "suruí", "unira": "unirá", "pubis": "púbis", "abaco": "ábaco", "itaca": "ítaca", "cupao": "cupão", "cilio": "cílio", "pifio": "pífio", "forco": "forço", "legua": "légua", "piton": "píton", "redea": "rédea", "marao": "marão", "sapao": "sapão", "carao": "carão", "pivos": "pivôs", "agape": "ágape", "caiua": "caiuá", "ilheu": "ilhéu", "pajes": "pajés", "romas": "romãs", "oculo": "óculo", "ameca": "ameça", "boson": "bóson", "daras": "darás", "ester": "éster", "bisao": "bisão", "cuite": "cuité", "curio": "curió", "jogao": "jogão", "araca": "araçá", "icara": "içara", "picao": "picão", "dodoi": "dodói", "sache": "sachê", "vozao": "vozão", "maues": "maués", "vovos": "vovós", "beico": "beiço", "foton": "fóton", "mache": "machê", "nepia": "népia", "arnes": "arnês", "fluia": "fluía", "galio": "gálio", "rodio": "ródio", "tenia": "tênia", "valao": "valão", "ebrio": "ébrio", "jucas": "jucás", "quere": "querê", "reuno": "reúno", "lidio": "lídio", "murca": "murça", "manes": "manés", "bufao": "bufão", "bocio": "bócio", "fujao": "fujão", "gibao": "gibão", "igapo": "igapó", "letao": "letão", "lelia": "lélia", "repoe": "repõe", "buzio": "búzio", "diras": "dirás", "doara": "doará", "sufle": "suflê", "simio": "símio", "torio": "tório", "bujao": "bujão", "talio": "tálio", "sante": "santé", "lumen": "lúmen", "xenia": "xênia", "banze": "banzé", "cocam": "coçam", "codex": "códex", "bicao": "bicão", "cocou": "coçou", "cuica": "cuíca", "soara": "soará", "abare": "abaré", "blase": "blasé", "lacar": "laçar", "atico": "ático", "alcou": "alçou", "chaos": "chãos", "fiuza": "fiúza", "lerao": "lerão", "aguca": "aguça", "meiao": "meião", "sarca": "sarça", "adoca": "adoça", "mundi": "múndi", "picui": "picuí", "rolao": "rolão", "acaua": "acauã", "coxao": "coxão", "helia": "hélia", "ofuro": "ofurô", "borax": "bórax", "fuzue": "fuzuê", "tilia": "tília", "patua": "patuá", "rubia": "rúbia", "airao": "airão", "pioes": "piões", "impia": "ímpia", "bales": "balés", "benca": "bença", "dandi": "dândi", "delio": "délio", "repos": "repôs", "sopao": "sopão", "fatuo": "fátuo", "mijao": "mijão", "diade": "díade", "labao": "labão", "nuria": "núria", "tetis": "tétis", "anodo": "ânodo", "aguai": "aguaí", "bouca": "bouça", "mesao": "mesão", "cotao": "cotão", "linea": "línea", "rubao": "rubão", "voara": "voará", "fotao": "fotão", "irara": "irará", "nevao": "nevão", "samia": "sâmia", "doiam": "doíam", "lemba": "lembá", "misso": "missô", "nubio": "núbio", "icada": "içada", "rosea": "rósea", "icado": "içado", "munus": "múnus", "fucas": "fuças", "lacio": "lácio", "mobil": "móbil", "orcar": "orçar", "rafia": "ráfia", "silex": "sílex", "anion": "ânion", "rocou": "roçou", "imbui": "imbuí", "tacao": "tacão", "index": "índex", "pitao": "pitão", "ticao": "tição", "ovnis": "óvnis", "alvao": "alvão", "soter": "sóter", "fiofo": "fiofó", "totos": "totós", "ubere": "úbere", "inaja": "inajá", "laque": "laquê", "venia": "vênia", "arere": "arerê", "bofia": "bófia", "guaja": "guajá", "lacou": "laçou", "saire": "sairé", "aldea": "aldeã", "covao": "covão", "cadis": "cádis", "demao": "demão", "mecam": "meçam", "reave": "reavê", "ladao": "ladão", "miche": "michê", "sarue": "saruê", "osmio": "ósmio", "mucao": "mução", "rumen": "rúmen", "ubata": "ubatã", "uvula": "úvula", "acara": "acará", "bigua": "biguá", "carda": "cardã", "codea": "côdea", "piteu": "pitéu", "rufio": "rúfio", "tosao": "tosão", "orobo": "orobó", "quata": "quatá", "saiao": "saião", "sauva": "saúva", "casao": "casão", "paete": "paetê", "itala": "ítala", "agogo": "agogô", "atois": "atóis", "dacio": "dácio", "lapao": "lapão", "opoes": "opões", "polux": "pólux", "roseo": "róseo", "xodos": "xodós", "licio": "lício", "roido": "roído", "simia": "símia", "xenon": "xénon", "ignea": "ígnea", "aroes": "arões", "cutis": "cútis", "morao": "morão", "nelia": "nélia", "paiao": "paião", "esima": "ésima", "idola": "ídola", "talia": "tália", "azimo": "ázimo", "compo": "compô", "pidao": "pidão", "ereis": "éreis", "obolo": "óbolo", "poras": "porás", "ticio": "tício", "bacos": "baços", "bidao": "bidão", "seica": "seiça", "tapao": "tapão", "aloes": "aloés", "braca": "braça", "frois": "fróis", "ganes": "ganês", "breta": "bretã", "coibe": "coíbe", "dacao": "dação", "noeis": "noéis", "serum": "sérum", "canca": "cancã", "helix": "hélix", "ijexa": "ijexá", "luteo": "lúteo", "abuna": "abunã", "bufes": "bufês", "fucou": "fuçou", "pates": "patês", "rasao": "rasão", "savel": "sável", "oitao": "oitão", "quipa": "quipá", "sacao": "sacão", "codon": "códon", "ficus": "fícus", "nisio": "nísio", "macar": "maçar", "nacar": "nácar", "rodea": "rodeá", "javae": "javaé", "oicas": "oiças", "prion": "príon", "pateo": "páteo", "siara": "siará", "xexeu": "xexéu", "atona": "átona", "insua": "ínsua", "ioios": "ioiôs", "oidio": "oídio", "rubio": "rúbio", "bosao": "bosão", "halux": "hálux", "sinao": "sinão", "unhao": "unhão", "areao": "areão", "lamia": "lâmia", "tirao": "tirão", "obice": "óbice", "capos": "capôs", "cacoa": "caçoa", "rodao": "rodão", "teves": "tevês", "dorio": "dório", "fajas": "fajãs", "ripio": "rípio", "boiao": "boião", "oucas": "ouças", "propo": "propô", "esimo": "ésimo", "homao": "homão", "jupia": "jupiá", "parea": "párea", "regie": "régie", "tifao": "tifão", "arigo": "arigó", "gozao": "gozão", "preas": "preás", "etimo": "étimo", "goita": "goitá", "misia": "mísia", "ingua": "íngua", "cocao": "cocão", "jonia": "jônia", "ficao": "ficão", "jutai": "jutaí", "mecas": "meças", "ebria": "ébria", "bocos": "bocós", "tagua": "taguá", "anaue": "anauê", "cupes": "cupês", "roida": "roída", "ambao": "ambão", "frape": "frapê", "potao": "potão", "cerio": "cério", "tembe": "tembé", "taxon": "táxon", "ocios": "ócios", "chone": "choné", "talus": "tálus", "argao": "argão", "corco": "corço", "miura": "miúra", "nubil": "núbil", "oboes": "oboés", "sopes": "sopés", "mapea": "mapeá", "nenes": "nenês", "parau": "paraú", "puido": "puído", "atimo": "átimo", "opora": "oporá", "rubeo": "rúbeo", "hauca": "haúça", "taeis": "taéis", "assua": "assuã", "enves": "envés", "jooes": "joões", "xareu": "xaréu", "atono": "átono", "amnio": "âmnio", "timbe": "timbé", "fucam": "fuçam", "meson": "méson", "regao": "regão", "tibio": "tíbio", "tiner": "tíner", "mapia": "mapiá", "piria": "piriá", "pures": "purês", "tipao": "tipão", "igneo": "ígneo", "anace": "anacé", "elepe": "elepê", "uncia": "úncia", "anaca": "anacã", "monhe": "monhé", "ruira": "ruirá", "tapia": "tapiá", "itrio": "ítrio", "abara": "abará", "eolia": "eólia", "ingai": "ingaí", "mirao": "mirão", "saxas": "saxãs", "odeon": "odéon", "mafua": "mafuá", "magne": "magné"};
+const strip = s => s.normalize('NFD').replace(/[̀-ͯ]/g,'');
+function mkValid(plain, acc, answers){ const m=new Map(); plain.split(' ').forEach(w=>m.set(w,w)); Object.entries(acc).forEach(([k,v])=>m.set(k,v)); answers.forEach(a=>m.set(strip(a),a)); return m; }
+const DICT = { 5:{answers:ANSWERS, valid:mkValid(PLAIN,ACC,ANSWERS)} };
+const MODES = {
+  classico:{name:'Clássico', L:5, B:1, T:6},
+  dupla:{name:'Dupla', L:5, B:2, T:7},
+  quadra:{name:'Quádrupla', L:5, B:4, T:9},
+};
+
+const mem = {};
+const store = {
+  get(k,d){ try{ const v=localStorage.getItem('palpite:'+k); if(v) return JSON.parse(v); }catch(e){} return k in mem ? JSON.parse(mem[k]) : d; },
+  set(k,v){ mem[k]=JSON.stringify(v); try{ localStorage.setItem('palpite:'+k, mem[k]); }catch(e){} }
+};
+const $ = id => document.getElementById(id);
+const boardsEl=$('boards'), kb=$('kb');
+let S, M; // state, mode config
+
+function emptyCur(){ return Array(M.L).fill(''); }
+const ORDER_V=2;
+// Old saves (random-word era) are dropped once so every player starts the fixed sequence at match 1.
+if(store.get('orderV',0)!==ORDER_V){ ['classico','seis','dupla','quadra'].forEach(m=>{ store.set('count_'+m,0); store.set('g_'+m,null); }); store.set('orderV',ORDER_V); }
+function newGame(mode, resume, goto){
+  M=MODES[mode]; store.set('mode',mode);
+  if(resume){ const saved=store.get('g_'+mode,null);
+    if(saved && !saved.done && saved.v===ORDER_V && saved.answers.join()===answersFor(mode,saved.n).join()){ S=saved; return; } }
+  const n=goto || store.get('count_'+mode,0)+1; store.set('count_'+mode,n);
+  const answers=answersFor(mode,n);
+  S={v:ORDER_V,mode,n,answers,guesses:[],solvedAt:Array(M.B).fill(null),cur:emptyCur(),pos:0,done:false,won:false};
+  save();
+}
+// Fixed order: match N of a mode has the same words for everyone.
+function seededOrder(list, seed){ let t=seed>>>0; const rnd=()=>{ t+=0x6D2B79F5; let x=Math.imul(t^t>>>15,1|t); x^=x+Math.imul(x^x>>>7,61|x); return ((x^x>>>14)>>>0)/4294967296; };
+  const a=list.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(rnd()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+const ORDERS={};
+function answersFor(mode,n){ const m=MODES[mode]; const seed={classico:11,seis:23,dupla:37,quadra:41}[mode];
+  const order=ORDERS[mode]||(ORDERS[mode]=seededOrder(DICT[m.L].answers,seed));
+  const per=Math.floor(order.length/m.B), i=(n-1)%per; return Array.from({length:m.B},(_,k)=>order[i*m.B+k]); }
+function save(){ store.set('g_'+S.mode,S); }
+
+function score(guess, answer){
+  const L=guess.length, res=Array(L).fill('miss'), left={};
+  for(let i=0;i<L;i++){ if(guess[i]===answer[i]) res[i]='hit'; else left[answer[i]]=(left[answer[i]]||0)+1; }
+  for(let i=0;i<L;i++){ if(res[i]!=='hit' && left[guess[i]]){ res[i]='near'; left[guess[i]]--; } }
+  return res;
+}
+const plainOf = w => strip(w);
+
+const MODE_INFO={classico:'1 palavra · 6 tentativas',dupla:'2 palavras · 7 tentativas',quadra:'4 palavras · 9 tentativas'};
+function buildTabs(){
+  $('modeMenu').innerHTML=Object.entries(MODES).map(([k,m])=>`<button class="mitem" role="menuitemradio" data-m="${k}" aria-checked="${k===S.mode}"><b>${m.name}</b><span>${MODE_INFO[k]}</span></button>`).join('');
+  $('modeMenu').querySelectorAll('.mitem').forEach(t=>t.addEventListener('click',()=>{ toggleMenu(false); if(t.dataset.m===S.mode) return; newGame(t.dataset.m,true); build(); paint(); }));
+}
+function toggleMenu(open){ const m=$('modeMenu'); open = open===undefined ? m.hidden : open; m.hidden=!open; $('modeBtn').setAttribute('aria-expanded',open); }
+function build(){
+  buildTabs();
+  boardsEl.innerHTML=''; boardsEl.dataset.b=M.B;
+  for(let b=0;b<M.B;b++){
+    const bd=document.createElement('div'); bd.className='board';
+    for(let r=0;r<M.T;r++){
+      const row=document.createElement('div'); row.className='row'; row.style.gridTemplateColumns=`repeat(${M.L},1fr)`;
+      for(let c=0;c<M.L;c++){ const t=document.createElement('div'); t.className='tile';
+        t.addEventListener('click',()=>{ if(r===S.guesses.length && !S.done && S.solvedAt[b]===null){ S.pos=c; paint(); } });
+        row.appendChild(t); }
+      bd.appendChild(row);
+    }
+    boardsEl.appendChild(bd);
+  }
+  if(!kb.childElementCount){
+    ['qwertyuiop','asdfghjkl⌫','zxcvbnm↵'].forEach((r,i)=>{
+      const d=document.createElement('div'); d.className='krow';
+      if(i===1){ const s=document.createElement('div'); s.className='spacer'; d.appendChild(s); }
+      [...r].forEach(ch=>{
+        const b=document.createElement('button'); b.className='key'; b.type='button';
+        if(ch==='⌫'){ b.textContent='⌫'; b.setAttribute('aria-label','Apagar'); b.dataset.k='Backspace'; b.classList.add('wide'); }
+        else if(ch==='↵'){ b.textContent='Enter'; b.dataset.k='Enter'; b.classList.add('wide'); }
+        else { b.textContent=ch; b.dataset.k=ch; }
+        b.addEventListener('click',()=>{ press(b.dataset.k); b.blur(); });
+        d.appendChild(b);
+      });
+      kb.appendChild(d);
+    });
+  }
+  layout();
+}
+function layout(){
+  const gap=M.B===1?5:2, bgap=M.B===1?0:8;
+  const W=boardsEl.clientWidth, H=boardsEl.clientHeight;
+  let best={ts:0,cols:1};
+  [1,2,4].filter(c=>c<=M.B && M.B%c===0).forEach(cols=>{
+    const brows=M.B/cols;
+    const tw=(W-(cols-1)*bgap-cols*(M.L-1)*gap)/(cols*M.L);
+    const th=(H-(brows-1)*bgap-brows*(M.T-1)*gap)/(brows*M.T);
+    const ts=Math.floor(Math.min(tw,th,(innerWidth>=900?80:64)));
+    if(ts>best.ts) best={ts,cols};
+  });
+  boardsEl.style.gridTemplateColumns=`repeat(${best.cols},auto)`;
+  boardsEl.style.gap=bgap+'px';
+  boardsEl.style.setProperty('--ts',Math.max(10,best.ts)+'px'); boardsEl.style.setProperty('--gap',gap+'px');
+}
+addEventListener('resize',()=>M&&layout());
+
+const PAL={hit:'var(--hit)',near:'var(--near)',miss:'var(--miss)',none:'var(--key)'};
+function paint(anim){
+  const nG=S.guesses.length;
+  [...boardsEl.children].forEach((bd,b)=>{
+    const solved=S.solvedAt[b], ans=plainOf(S.answers[b]);
+    bd.classList.toggle('solved', solved!==null);
+    [...bd.children].forEach((row,r)=>{
+      const shown = solved===null ? r<nG : r<=solved;
+      row.classList.toggle('active', r===nG && !S.done && solved===null);
+      [...row.children].forEach((t,c)=>{
+        t.className='tile'; t.style.animationDelay='';
+        if(shown){ const g=S.guesses[r]; const res=score(plainOf(g),ans); t.textContent=g[c]; t.classList.add(res[c]);
+          if(anim===r){ t.classList.add('flip'); t.style.animationDelay=(c*.15)+'s'; } }
+        else if(r===nG && !S.done && solved===null){ t.textContent=S.cur[c]; if(S.cur[c]) t.classList.add('filled'); if(c===S.pos) t.classList.add('cursor'); }
+        else { t.textContent=''; if(solved!==null && r>solved) t.classList.add('off'); }
+      });
+    });
+    if(S.done && solved===null) bd.dataset.ans=S.answers[b]; else delete bd.dataset.ans;
+  });
+  const rank={none:0,miss:1,near:2,hit:3};
+  const best=S.answers.map((a,b)=>{ const o={}; const ans=plainOf(a); const upto=S.solvedAt[b]===null?nG:S.solvedAt[b]+1;
+    S.guesses.slice(0,upto).forEach(g=>{ const p=plainOf(g); score(p,ans).forEach((x,i)=>{ if(!o[p[i]]||rank[x]>rank[o[p[i]]]) o[p[i]]=x; }); }); return o; });
+  kb.querySelectorAll('.key').forEach(k=>{
+    k.classList.remove('hit','near','miss','split'); k.style.background='';
+    const L=k.dataset.k; if(L.length!==1) return;
+    const st=best.map(o=>o[L]||'none');
+    if(M.B===1){ if(st[0]!=='none') k.classList.add(st[0]); return; }
+    if(st.every(x=>x==='none')) return;
+    // solved boards don't count: show them as neutral
+    const vis=st.map((x,b)=>S.solvedAt[b]!==null && x!=='hit' ? 'none' : x);
+    if(vis.every(x=>x==='miss')){ k.classList.add('miss'); return; }
+    k.classList.add('split');
+    if(M.B===2) k.style.background=`linear-gradient(90deg, ${PAL[vis[0]]} 50%, ${PAL[vis[1]]} 50%)`;
+    else k.style.background=`linear-gradient(${PAL[vis[0]]},${PAL[vis[0]]}) 0 0/50% 50% no-repeat, linear-gradient(${PAL[vis[1]]},${PAL[vis[1]]}) 100% 0/50% 50% no-repeat, linear-gradient(${PAL[vis[2]]},${PAL[vis[2]]}) 0 100%/50% 50% no-repeat, linear-gradient(${PAL[vis[3]]},${PAL[vis[3]]}) 100% 100%/50% 50% no-repeat`;
+  });
+  $('modeName').textContent = M.name;
+  $('mode').textContent = S.done ? (S.won ? 'Concluído' : 'Fim de jogo') : 'Partida '+S.n+(M.B===1 ? '' : ' · '+S.solvedAt.filter(x=>x!==null).length+' de '+M.B+' certas');
+  $('modeMenu').querySelectorAll('.mitem').forEach(t=>t.setAttribute('aria-checked', t.dataset.m===S.mode));
+  $('left').textContent = S.done ? '' : `Tentativa ${Math.min(nG+1,M.T)} de ${M.T}`;
+}
+
+// Original synthesized retro sounds (Web Audio). No external audio files.
+const SFX=(()=>{ let ctx=null, on=store.get('sound',true);
+  function ac(){ if(!ctx){ try{ ctx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return null; } } if(ctx.state==='suspended') ctx.resume(); return ctx; }
+  function tone(f,t0,dur,{type='sine',vol=.18,attack=.01,slide=0}={}){ const c=ac(); if(!c||!on) return; const t=c.currentTime+t0;
+    const o=c.createOscillator(), g=c.createGain(); o.type=type; o.frequency.setValueAtTime(f,t); if(slide) o.frequency.exponentialRampToValueAtTime(f*slide,t+dur);
+    g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(vol,t+attack); g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+    o.connect(g); g.connect(c.destination); o.start(t); o.stop(t+dur+.05); }
+  const bell=(f,t0,d=.6,v=.14)=>{ tone(f,t0,d,{vol:v}); tone(f*2.01,t0,d*.6,{vol:v*.35}); tone(f*3.02,t0,d*.3,{vol:v*.12}); };
+  return {
+    unlock(){ ac(); },
+    get on(){ return on; }, set on(v){ on=v; store.set('sound',v); },
+    click(){ tone(1900,0,.03,{type:'square',vol:.035,attack:.002}); },
+    back(){ tone(900,0,.04,{type:'square',vol:.03,attack:.002}); },
+    tick(i){ tone(520+i*40,i*.15,.08,{type:'triangle',vol:.08,attack:.005}); },
+    error(){ bell(392,0,.5,.16); bell(311,.12,.6,.14); },
+    solve(){ [659,880,1175].forEach((f,i)=>bell(f,i*.09,.5,.11)); },
+    win(){ [523,659,784,1047].forEach((f,i)=>bell(f,i*.12,.9,.12)); tone(262,0,1.6,{type:'triangle',vol:.06,attack:.2}); tone(392,.1,1.5,{type:'triangle',vol:.05,attack:.3}); },
+    lose(){ bell(440,0,.6,.13); bell(349,.22,.7,.13); bell(262,.46,1.1,.12); },
+    balloon(){ tone(1400,0,.12,{vol:.06,slide:1.4}); },
+    startup(){ const n=[[392,0],[523,.18],[659,.36],[784,.62],[1047,.95]]; n.forEach(([f,t])=>bell(f,t,1.6,.09));
+      [196,262,330].forEach((f,i)=>tone(f,.05+i*.08,2.6,{type:'triangle',vol:.05,attack:.6})); },
+    open(){ tone(700,0,.06,{vol:.06,slide:1.5}); },
+  };
+})();
+addEventListener('pointerdown',()=>SFX.unlock(),{once:true});
+addEventListener('keydown',()=>SFX.unlock(),{once:true});
+let toastT;
+function toast(msg,ms=1600){ SFX.balloon(); const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),ms); }
+
+function press(k){
+  if(anyModal()) return;
+  if(S.done){ if(k==='Enter') nextWord(); return; }
+  if(k==='Enter') return submit();
+  if(k==='Backspace'){ SFX.back(); if(!S.cur[S.pos] && S.pos>0) S.pos--; S.cur[S.pos]=''; return paint(); }
+  if(k==='ArrowLeft'){ S.pos=Math.max(0,S.pos-1); return paint(); }
+  if(k==='ArrowRight'){ S.pos=Math.min(M.L-1,S.pos+1); return paint(); }
+  if(/^[a-z]$/.test(k)){ SFX.click(); S.cur[S.pos]=k; if(S.pos<M.L-1) S.pos++; else { const e=S.cur.indexOf(''); if(e>=0) S.pos=e; } paint(); }
+}
+function activeRows(){ return [...boardsEl.children].map(bd=>bd.children[S.guesses.length]).filter(Boolean); }
+function submit(){
+  if(S.cur.some(x=>!x)){ activeRows().forEach(shake); SFX.error(); return toast('Faltam letras'); }
+  const word=DICT[M.L].valid.get(S.cur.join(''));
+  if(!word){ activeRows().forEach(shake); SFX.error(); return toast('Essa palavra não está na lista'); }
+  S.guesses.push(word); S.cur=emptyCur(); S.pos=0;
+  const r=S.guesses.length-1, p=plainOf(word);
+  const newly=[];
+  S.answers.forEach((a,b)=>{ if(S.solvedAt[b]===null && plainOf(a)===p){ S.solvedAt[b]=r; newly.push(b); } });
+  const allSolved=S.solvedAt.every(x=>x!==null);
+  if(allSolved||S.guesses.length===M.T){ S.done=true; S.won=allSolved; record(); }
+  save(); paint(r);
+  const delay=M.L*150+350;
+  for(let i=0;i<M.L;i++) SFX.tick(i);
+  if(newly.length && !S.done) setTimeout(()=>SFX.solve(),delay-100);
+  if(newly.length && !S.done) setTimeout(()=>toast(M.B>1?`Acertou ${newly.length>1?'duas':'uma'}! Faltam ${S.solvedAt.filter(x=>x===null).length}`:'Boa!'),delay);
+  if(S.done){
+    const msgs=['Genial!','Impressionante!','Muito bem!','Boa!','Ufa, foi!','No limite!'];
+    setTimeout(()=>{
+      if(S.won){ SFX.win(); newly.forEach(b=>boardsEl.children[b].children[r].classList.add('win')); toast(M.B===1?msgs[Math.min(r,5)]:'Todas certas!',1800); }
+      else { SFX.lose(); } if(!S.won) toast((S.answers.length>1?'As palavras eram ':'A palavra era ')+S.answers.join(', ').toUpperCase(),2800);
+      setTimeout(openStats,S.won?1900:2900);
+    }, delay);
+  }
+}
+function shake(el){ el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); }
+
+function record(){
+  const st=store.get('stats_'+S.mode,{played:0,wins:0,streak:0,best:0,dist:Array(M.T).fill(0)});
+  st.played++;
+  if(S.won){ st.wins++; st.dist[S.guesses.length-1]++; st.streak++; st.best=Math.max(st.best,st.streak); } else st.streak=0;
+  store.set('stats_'+S.mode,st);
+}
+function openStats(){
+  const st=store.get('stats_'+S.mode,{played:0,wins:0,streak:0,best:0,dist:Array(M.T).fill(0)});
+  $('hStats').textContent = 'Seu desempenho · '+M.name;
+  $('stats').innerHTML=[[st.played,'jogos'],[st.played?Math.round(st.wins/st.played*100)+'%':'0%','vitórias'],[st.streak,'sequência'],[st.best,'melhor']]
+    .map(([v,l])=>`<div><b>${v}</b><span>${l}</span></div>`).join('');
+  const first=st.dist.findIndex(n=>n>0), from=M.B===1?0:Math.max(0,M.B-1);
+  const max=Math.max(1,...st.dist);
+  $('dist').innerHTML=st.dist.map((n,i)=>i<from?'':`<div class="bar${S.done&&S.won&&S.guesses.length===i+1?' now':''}">${i+1}<i style="width:${n?6+n/max*76:0}%"></i><em>${n}</em></div>`).join('');
+  let res='', act='';
+  if(S.done){
+    const words=S.answers.map(a=>`<div class="answer">${a}</div>`).join('');
+    res = (S.won ? `<p class="small">Você acertou em ${S.guesses.length} de ${M.T}</p>` : `<p class="small">${S.answers.length>1?'As palavras eram':'A palavra era'}</p>`)+`<div class="answers">${words}</div><div style="height:14px"></div>`;
+  }
+  act = `<button class="btn primary" id="bFree">${S.done?'Próxima partida':'Pular para outra partida'}</button>` + (S.done?`<button class="btn alt" id="bShare">Copiar resultado</button>`:'');
+  act += `<form class="goto" id="fGoto"><label for="iGoto">Ir para a partida</label><input id="iGoto" type="number" inputmode="numeric" min="1" value="${S.n}"><button class="btn alt" type="submit">Ir</button></form>`;
+  $('result').innerHTML=res; $('actions').innerHTML=act;
+  $('fGoto').addEventListener('submit',e=>{ e.preventDefault(); const n=Math.max(1,Math.floor(+$('iGoto').value||1)); close(); newGame(S.mode,false,n); build(); paint(); toast(M.name+': partida '+n); });
+  $('bShare')&&$('bShare').addEventListener('click',share);
+  $('bFree').addEventListener('click',nextWord);
+  $('mStats').hidden=false;
+}
+function nextWord(){ close(); newGame(S.mode,false); build(); paint(); }
+
+function share(){
+  const em={hit:'🟩',near:'🟪',miss:'⬛'};
+  let txt=`Palpite · ${M.name} ${S.won?S.guesses.length:'X'}/${M.T}\n\n`;
+  if(M.B===1) txt+=S.guesses.map(g=>score(plainOf(g),plainOf(S.answers[0])).map(x=>em[x]).join('')).join('\n');
+  else txt+=S.solvedAt.map((x,b)=>x===null?'🟥':['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣'][x]).reduce((a,c,i)=>a+c+(M.B===4&&i===1?'\n':''),'');
+  try{ navigator.clipboard.writeText(txt).then(()=>toast('Resultado copiado'),()=>fallback(txt)); }catch(e){ fallback(txt); }
+}
+function fallback(txt){ const ta=document.createElement('textarea'); ta.value=txt; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select();
+  let ok=false; try{ ok=document.execCommand('copy'); }catch(e){} ta.remove(); toast(ok?'Resultado copiado':'Não deu para copiar neste navegador'); }
+
+$('modeBtn').addEventListener('click',e=>{ e.stopPropagation(); toggleMenu(); });
+document.addEventListener('click',e=>{ if(!$('modeMenu').hidden && !e.target.closest('#modeMenu')) toggleMenu(false); });
+function anyModal(){ return !$('modeMenu').hidden || !$('mHelp').hidden || !$('mStats').hidden; }
+function close(){ $('mHelp').hidden=true; $('mStats').hidden=true; }
+document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',close));
+document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{ if(e.target===m) close(); }));
+$('bHelp').addEventListener('click',()=>{ SFX.open(); $('mHelp').hidden=false; });
+function paintSound(){ $('bSound').setAttribute('aria-pressed',SFX.on); $('bSound').setAttribute('aria-label',SFX.on?'Desligar som':'Ligar som'); $('bSound').classList.toggle('muted',!SFX.on); }
+$('bSound').addEventListener('click',()=>{ SFX.on=!SFX.on; paintSound(); if(SFX.on) SFX.solve(); });
+paintSound();
+$('bStats').addEventListener('click',openStats);
+$('bNew').addEventListener('click',()=>{ if(S.done || !S.guesses.length) return nextWord(); openStats(); });
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){ toggleMenu(false); return close(); }
+  if(e.ctrlKey||e.metaKey||e.altKey) return;
+  const k=e.key.length===1 ? strip(e.key.toLowerCase()) : e.key;
+  if(['Enter','Backspace','ArrowLeft','ArrowRight'].includes(k) || /^[a-z]$/.test(k)){ e.preventDefault(); press(k); }
+});
+
+(function boot(){ const el=$('boot'); const quick=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // A tap only unlocks audio (browsers block sound before it); the boot keeps running so the chime can be heard.
+  let tapped=false, played=false, stage2=false;
+  const chime=()=>{ if(tapped && stage2 && !played){ played=true; SFX.startup(); } };
+  el.addEventListener('click',()=>{ tapped=true; SFX.unlock(); chime(); });
+  setTimeout(()=>{ el.classList.add('two'); stage2=true; chime(); }, quick?500:4500);
+  setTimeout(()=>{ el.classList.add('out'); setTimeout(()=>el.hidden=true,550); }, quick?1200:8000); })();
+(function clock(){ const n=new Date(); $('clock').textContent=String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0'); setTimeout(clock,10000); })();
+newGame(MODES[store.get('mode','classico')]?store.get('mode','classico'):'classico', true); build(); paint();
+if(!store.get('seenHelp',false)){ $('mHelp').hidden=false; store.set('seenHelp',true); }
+</script>
+</body>
+</html>
